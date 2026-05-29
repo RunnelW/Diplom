@@ -1,0 +1,41 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "PlywoodStrong@2024"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Express"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: >
+        /bin/bash -c "
+          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'PlywoodStrong@2024' -C -Q 'SELECT 1' 2>/dev/null ||
+          /opt/mssql-tools/bin/sqlcmd  -S localhost -U sa -P 'PlywoodStrong@2024' -Q 'SELECT 1' 2>/dev/null
+        "
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "7777:7777"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:7777
+      ConnectionStrings__DefaultConnection: >-
+        Server=db;Database=PlywoodFactoryDB;
+        User Id=sa;Password=PlywoodStrong@2024;
+        TrustServerCertificate=True;MultipleActiveResultSets=true
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  sqldata:
