@@ -1,2 +1,0 @@
-﻿INSERT INTO [dbo].[AspNetUserRoles] ([UserId], [RoleId]) VALUES (N'2d1d575e-6e25-4f9c-a0be-126988c6dbd2', N'fa03afce-41ca-4ba7-b79e-f131f8460be7')
-SELECT Id FROM AspNetUsers WHERE Email = 'admin@plywood.local';

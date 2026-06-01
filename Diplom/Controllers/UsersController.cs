@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Diplom.Data;
+using Diplom.Models;
+using Diplom.Services;
+using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Diplom.Data;
-using Diplom.Models;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace Diplom.Controllers
@@ -15,12 +18,14 @@ namespace Diplom.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<AppUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly AuditService _auditService;
 
-        public UsersController(ApplicationDbContext context, UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager)
+        public UsersController(ApplicationDbContext context, UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager, AuditService auditService)
         {
             _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
+            _auditService = auditService;
         }
 
         public async Task<IActionResult> Index()
@@ -38,21 +43,13 @@ namespace Diplom.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(string email, string password, string fullName, string position, string role)
+        public async Task<IActionResult> Create(string email, string fullName, string position, string role)
         {
-            // Сохраняем введённые данные для возврата на форму
-            ViewBag.FormData = new { email, fullName, position, role };
-            ViewBag.Roles = _roleManager.Roles.Select(r => r.Name).ToList();
-
-            // Проверка всех полей
-            if (string.IsNullOrWhiteSpace(email) ||
-                string.IsNullOrWhiteSpace(password) ||
-                string.IsNullOrWhiteSpace(fullName) ||
-                string.IsNullOrWhiteSpace(position) ||
-                string.IsNullOrWhiteSpace(role))
+            // Проверка обязательных полей
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(position) || string.IsNullOrWhiteSpace(role))
             {
                 TempData["Error"] = "Все поля обязательны для заполнения.";
-                return View();
+                return RedirectToAction("Create");
             }
 
             // Проверка уникальности email
@@ -60,9 +57,13 @@ namespace Diplom.Controllers
             if (existing != null)
             {
                 TempData["Error"] = "Пользователь с таким email уже существует.";
-                return View();
+                return RedirectToAction("Create");
             }
 
+            // Генерируем случайный пароль (12 символов)
+            var generatedPassword = GenerateRandomPassword(12);
+
+            // Создаём пользователя
             var user = new AppUser
             {
                 UserName = email,
@@ -71,20 +72,32 @@ namespace Diplom.Controllers
                 Position = position
             };
 
-            var result = await _userManager.CreateAsync(user, password);
+            var result = await _userManager.CreateAsync(user, generatedPassword);          
+
             if (result.Succeeded)
             {
+                // Назначаем роль
                 if (!string.IsNullOrEmpty(role) && await _roleManager.RoleExistsAsync(role))
+                {
                     await _userManager.AddToRoleAsync(user, role);
-                TempData["Success"] = $"Пользователь {email} создан!";
-                return RedirectToAction(nameof(Index));
+                }
+
+                // Показываем сгенерированный пароль
+                await _auditService.LogAsync("Create", "User", null, $"Создан пользователь: {email}, роль: {role}");
+                TempData["Success"] = $"✅ Пользователь {email} создан!";
+                TempData["GeneratedPassword"] = generatedPassword;
+
+
+                return RedirectToAction("Index");
             }
             else
             {
                 var errors = string.Join("; ", result.Errors.Select(e => e.Description));
                 TempData["Error"] = $"Ошибка: {errors}";
-                return View();
+                return RedirectToAction("Create");
             }
+
+            
         }
 
         [HttpGet]
@@ -110,30 +123,27 @@ namespace Diplom.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
         {
-            if (string.IsNullOrEmpty(id))
-            {
-                TempData["Error"] = "Не указан идентификатор пользователя.";
-                return RedirectToAction(nameof(Index));
-            }
-
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
             {
                 TempData["Error"] = "Пользователь не найден.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Index");
             }
 
-            // Защита от удаления самого администратора
-            if (user.Email == "admin@plywood.local")
+            var userEmail = user.Email;
+
+            if (userEmail == "admin@plywood.local")
             {
                 TempData["Error"] = "Нельзя удалить главного администратора.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Index");
             }
 
             var result = await _userManager.DeleteAsync(user);
+
             if (result.Succeeded)
             {
-                TempData["Success"] = $"Пользователь {user.Email} удалён.";
+                await _auditService.LogAsync("Delete", "User", null, $"Удалён пользователь: {userEmail}");
+                TempData["Success"] = $"Пользователь {userEmail} удалён.";
             }
             else
             {
@@ -141,7 +151,15 @@ namespace Diplom.Controllers
                 TempData["Error"] = $"Ошибка при удалении: {errors}";
             }
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Index");
+        }
+
+        private string GenerateRandomPassword(int length = 12)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, length)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
         }
     }
 }

@@ -4,7 +4,7 @@ using Diplom.Services;
 
 namespace Diplom.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin,Director,Manager")]
     public class ForecastController : Controller
     {
         private readonly ForecastService _forecastService;

@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Diplom.Models;
+using Diplom.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Diplom.Models;
 
 namespace Diplom.Controllers
 {
@@ -14,11 +15,13 @@ namespace Diplom.Controllers
 
         private readonly SignInManager<AppUser> _signInManager;
         private readonly UserManager<AppUser> _userManager;
+        private readonly AuditService _auditService;
 
-        public AccountController(SignInManager<AppUser> signInManager, UserManager<AppUser> userManager)
+        public AccountController(SignInManager<AppUser> signInManager, UserManager<AppUser> userManager, AuditService auditService)
         {
             _signInManager = signInManager;
             _userManager = userManager;
+            _auditService = auditService;
         }
 
         [HttpGet]
@@ -37,6 +40,8 @@ namespace Diplom.Controllers
                 var result = await _signInManager.PasswordSignInAsync(email, password, false, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
+                    // ЛОГИРОВАНИЕ ВХОДА
+                    await _auditService.LogAsync("Login", "Account", null, $"Вход в систему: {email}");
                     return RedirectToLocal(returnUrl);
                 }
                 ModelState.AddModelError(string.Empty, "Неверный логин или пароль.");
@@ -48,6 +53,10 @@ namespace Diplom.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
+            var userName = User.Identity?.Name;
+            // ЛОГИРОВАНИЕ ВЫХОДА
+            await _auditService.LogAsync("Logout", "Account", null, $"Выход из системы: {userName}");
+
             await _signInManager.SignOutAsync();
             return RedirectToAction("Login", "Account");
         }

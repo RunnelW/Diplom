@@ -13,6 +13,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Регистрация сервиса прогнозирования
 builder.Services.AddScoped<ForecastService>();
 
+//журнал действий
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AuditService>();
+
 // 2. Регистрация Identity (ВАЖНЫЙ ПОРЯДОК!)
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {
@@ -31,6 +35,8 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/Account/Login";
     options.LogoutPath = "/Account/Logout";
     options.AccessDeniedPath = "/Account/AccessDenied";
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+    options.SlidingExpiration = true;
 });
 
 builder.Services.AddControllersWithViews();
@@ -60,7 +66,7 @@ using (var scope = app.Services.CreateScope())
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
     // Создаём роли
-    string[] roles = { "Admin", "Storekeeper", "Director", "Manager" };
+    string[] roles = { "Admin", "Storekeeper", "Director", "Manager", "Master" };
     foreach (var role in roles)
     {
         if (!await roleManager.RoleExistsAsync(role))

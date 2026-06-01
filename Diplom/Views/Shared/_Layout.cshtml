@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - АСУ Фанерный завод</title>
+    <title>@ViewData["Title"] - Фанерный завод</title>
     <style>
         /* ---------------------- СБРОС И БАЗОВЫЕ СТИЛИ ---------------------- */
         * {
@@ -160,7 +160,6 @@
         }
 
         /* ---------------------- КОМПОНЕНТЫ ---------------------- */
-        /* Таблицы */
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -190,7 +189,6 @@
                 background: #f8fafc;
             }
 
-        /* Карточки */
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -227,7 +225,6 @@
             padding: 20px;
         }
 
-        /* Кнопки */
         .btn {
             display: inline-flex;
             align-items: center;
@@ -263,7 +260,6 @@
                 border-color: #94a3b8;
             }
 
-        /* Уведомления */
         .alert-success {
             background: #d1e7dd;
             color: #0a3622;
@@ -280,7 +276,6 @@
             margin-bottom: 24px;
         }
 
-        /* Формы */
         .form-group {
             margin-bottom: 20px;
         }
@@ -308,7 +303,6 @@
                 box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.1);
             }
 
-        /* Прогресс-бары и прочее */
         .progress-bar {
             background: #e2e8f0;
             border-radius: 999px;
@@ -332,98 +326,223 @@
             font-weight: 700;
         }
 
-        /* Адаптивность для планшетов и телефонов */
-        @@media (max-width: 768px) {
-            .sidebar
+        /* Стили для страницы входа (без сайдбара) */
+        .login-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f2b1f 0%, #1a3a2a 50%, #0d2818 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 24px;
+            padding: 40px 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @@keyframes fadeInUp {
+            from
 
         {
-            width: 80px;
-            align-items: center;
+            opacity: 0;
+            transform: translateY(20px);
         }
 
-        .sidebar-header .logo-text, .sidebar .nav-item span:not(.nav-icon) {
-            display: none;
+        to {
+            opacity: 1;
+            transform: translateY(0);
         }
 
-        .nav-item {
-            justify-content: center;
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .login-logo h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a3a2a;
+            margin-bottom: 4px;
+        }
+
+        .login-logo p {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 18px;
+        }
+
+        .btn-login {
+            width: 100%;
             padding: 12px;
+            background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
         }
 
-        .main-content {
-            margin-left: 80px;
-            padding: 16px;
+            .btn-login:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(45, 106, 79, 0.3);
+            }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 32px;
+            font-size: 12px;
+            color: #94a3b8;
         }
 
-        .content-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 16px;
-        }
+        @@media (max-width: 768px) {
+            .sidebar {
+                width: 80px;
+                align-items: center;
+            }
 
+                .sidebar-header .logo-text, .sidebar .nav-item span:not(.nav-icon) {
+                    display: none;
+                }
+
+            .nav-item {
+                justify-content: center;
+                padding: 12px;
+            }
+
+            .main-content {
+                margin-left: 80px;
+                padding: 16px;
+            }
+
+            .content-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .login-container {
+                padding: 16px;
+            }
+
+            .login-card {
+                padding: 28px 20px;
+            }
         }
     </style>
-    <!-- Для эмодзи-иконок и совместимости -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <div class="app-layout">
-        <!-- БОКОВОЕ МЕНЮ (САЙДБАР) -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <span class="logo-icon">🏭</span>
-                    <div class="logo-text">
-                        АСУ "Фанерный завод"
-                        <small>пгт. Демьяново</small>
+    @{
+        var isLoginPage = Context.Request.Path.StartsWithSegments("/Account/Login");
+    }
+
+    @if (!isLoginPage && User.Identity.IsAuthenticated)
+    {
+        <!-- БОКОВОЕ МЕНЮ (САЙДБАР) ДЛЯ АВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ -->
+        <div class="app-layout">
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <div class="logo">
+                        <span class="logo-icon">🏭</span>
+                        <div class="logo-text">
+                            "Фанерный завод"
+                            <small>пгт. Демьяново</small>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="nav-links">
-                @if (User.Identity.IsAuthenticated)
-                {
+                <div class="nav-links">
                     <a href="/" class="nav-item @(Context.Request.Path == "/" ? "active" : "")">
                         <i class="fas fa-tachometer-alt"></i> <span>Панель управления</span>
                     </a>
-                    <a href="/WoodMovements" class="nav-item @(Context.Request.Path.StartsWithSegments("/WoodMovements") && !Context.Request.Path.StartsWithSegments("/WoodMovements/Income") ? "active" : "")">
-                        <i class="fas fa-exchange-alt"></i> <span>Движения</span>
-                    </a>
-                    <a href="/WoodMovements/Income" class="nav-item @(Context.Request.Path == "/WoodMovements/Income" ? "active" : "")">
-                        <i class="fas fa-plus-circle"></i> <span>Приход</span>
-                    </a>
-                    <a href="/Production" class="nav-item @(Context.Request.Path.StartsWithSegments("/Production") ? "active" : "")">
-                        <i class="fas fa-industry"></i> <span>Производство</span>
-                    </a>
-                    <a href="/WoodStacks" class="nav-item @(Context.Request.Path.StartsWithSegments("/WoodStacks") ? "active" : "")">
-                        <i class="fas fa-layer-group"></i> <span>Штабеля</span>
-                    </a>
-                    <a href="/FinishedGoods" class="nav-item">
-                        <i class="fas fa-warehouse"></i> <span>Готовая продукция</span>
-                    </a>
-                    <a href="/Shipment" class="nav-item">
-                        <i class="fas fa-truck"></i> <span>Отгрузки</span>
-                    </a>
-                    <a href="/Inventory" class="nav-item">
-                        <i class="fas fa-clipboard-list"></i> <span>Инвентаризация</span>
-                    </a>
-                    <a href="/Forecast" class="nav-item">
-                        <i class="fas fa-chart-line"></i> <span>Прогноз</span>
-                    </a>
-                    <a href="/Reports" class="nav-item">
-                        <i class="fas fa-chart-pie"></i> <span>Отчёты</span>
-                    </a>
-                    @if (User.Identity.Name == "admin@plywood.local")
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Storekeeper") || User.IsInRole("Director"))
                     {
-                        <a href="/Users" class="nav-item @(Context.Request.Path.StartsWithSegments("/Users") ? "active" : "")">
+                        <a href="/WoodMovements" class="nav-item">
+                            <i class="fas fa-exchange-alt"></i> <span>Движения</span>
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Director") || User.IsInRole("Master"))
+                    {
+                        <a href="/Production" class="nav-item">
+                            <i class="fas fa-industry"></i> <span>Производство</span>
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Storekeeper"))
+                    {
+                        <a href="/FinishedGoods" class="nav-item">
+                            <i class="fas fa-warehouse"></i> <span>Готовая продукция</span>
+                        </a>
+                        <a href="/Shipment" class="nav-item">
+                            <i class="fas fa-truck"></i> <span>Отгрузки</span>
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Director") || User.IsInRole("Manager"))
+                    {
+                        <a href="/Reports" class="nav-item">
+                            <i class="fas fa-chart-pie"></i> <span>Отчёты</span>
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Storekeeper"))
+                    {
+                        <a href="/Inventory" class="nav-item">
+                            <i class="fas fa-clipboard-list"></i> <span>Инвентаризация</span>
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Director") || User.IsInRole("Manager"))
+                    {
+                        <a href="/Forecast" class="nav-item">
+                            <i class="fas fa-chart-line"></i> <span>Прогноз</span>
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a href="/Audit" class="nav-item">
+                            <i class="fas fa-history"></i> <span>Журнал действий</span>
+                        </a>
+                        <a href="/Users" class="nav-item">
                             <i class="fas fa-users"></i> <span>Пользователи</span>
                         </a>
                     }
-                }
-            </div>
+                </div>
 
-            @if (User.Identity.IsAuthenticated)
-            {
                 <div class="logout-section">
                     <form method="post" action="/Account/Logout">
                         @Html.AntiForgeryToken()
@@ -432,27 +551,28 @@
                         </button>
                     </form>
                 </div>
-            }
-            else
-            {
-                <div class="logout-section">
-                    <a href="/Account/Login" class="nav-item" style="background: #2d6a4f; color: white;">
-                        <i class="fas fa-key"></i> <span>Вход в систему</span>
-                    </a>
-                </div>
-            }
-        </aside>
+            </aside>
 
-        <!-- ОСНОВНОЙ КОНТЕНТ -->
-        <main class="main-content">
-            <div class="content-header">
-                <h1 class="page-title">@ViewData["Title"]</h1>
-                <div class="date">
-                    <i class="far fa-calendar-alt"></i> @DateTime.Now.ToString("dd.MM.yyyy")
+            <main class="main-content">
+                <div class="content-header">
+                    <h1 class="page-title">@ViewData["Title"]</h1>
+                    <div class="date">
+                        <i class="far fa-calendar-alt"></i> @DateTime.Now.ToString("dd.MM.yyyy")
+                    </div>
                 </div>
-            </div>
-            @RenderBody()
-        </main>
-    </div>
+                @RenderBody()
+            </main>
+        </div>
+    }
+    else if (isLoginPage)
+    {
+        <!-- СТРАНИЦА ВХОДА (БЕЗ САЙДБАРА) -->
+        @RenderBody()
+    }
+    else
+    {
+        <!-- ДЛЯ НЕАВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ (ПЕРЕБРОС НА ВХОД) -->
+        <script>window.location.href = '/Account/Login';</script>
+    }
 </body>
 </html>

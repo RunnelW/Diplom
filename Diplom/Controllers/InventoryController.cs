@@ -1,22 +1,25 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Diplom.Data;
+using Diplom.Models;
+using Diplom.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Diplom.Data;
-using Diplom.Models;
 
 namespace Diplom.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin,Storekeeper")]
     public class InventoryController : Controller
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<AppUser> _userManager;
+        private readonly AuditService _auditService;
 
-        public InventoryController(ApplicationDbContext context, UserManager<AppUser> userManager)
+        public InventoryController(ApplicationDbContext context, UserManager<AppUser> userManager, AuditService auditService)
         {
             _context = context;
             _userManager = userManager;
+            _auditService = auditService;
         }
 
         // GET: Список инвентаризаций
@@ -234,11 +237,16 @@ namespace Diplom.Controllers
                 .Where(i => i.InventoryId == id)
                 .ToListAsync();
 
+            // Рассчитываем общее расхождение
+            decimal totalDifference = 0;
+
             // Применяем расхождения к остаткам
             foreach (var item in items)
             {
                 if (item.Difference != 0)
                 {
+                    totalDifference += item.Difference;
+
                     if (item.ItemType == "WoodStack")
                     {
                         var stack = await _context.WoodStacks.FindAsync(item.ItemId);
@@ -264,6 +272,10 @@ namespace Diplom.Controllers
             inventory.EndDate = DateTime.Now;
 
             await _context.SaveChangesAsync();
+
+            // ЛОГИРОВАНИЕ
+            await _auditService.LogAsync("Complete", "Inventory", inventory.Id,
+                $"Завершена инвентаризация №{inventory.InventoryNumber}, общее расхождение: {totalDifference:F2} м³");
 
             TempData["Success"] = $"Инвентаризация №{inventory.InventoryNumber} завершена. Расхождения применены.";
             return RedirectToAction("Index");

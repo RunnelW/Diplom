@@ -21,6 +21,7 @@ namespace Diplom.Data
         public DbSet<ShipmentItem> ShipmentItems { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
         public DbSet<InventoryItem> InventoryItems { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

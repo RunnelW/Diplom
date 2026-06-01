@@ -1,0 +1,213 @@
+﻿@model IEnumerable<Diplom.Models.AuditLog>
+@{
+    ViewData["Title"] = "Журнал действий";
+}
+
+<div class="page-header">
+    <h2>📋 Журнал действий</h2>
+    <a href="javascript:window.print()" class="btn btn-outline-primary">🖨️ Печать</a>
+</div>
+
+
+
+<div class="card">
+    <div class="card-body">
+        <div class="alert alert-info">
+            <strong>📊 Найдено записей:</strong> @Model.Count()
+        </div>
+
+        @if (!Model.Any())
+        {
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-history fa-3x mb-3"></i>
+                <p>Записей не найдено</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Дата и время</th>
+                            <th>Пользователь</th>
+                            <th>Действие</th>
+                            <th>Объект</th>
+                            <th>Описание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in Model)
+                        {
+                            <tr>
+                                <td>@log.Timestamp.ToString("dd.MM.yyyy HH:mm:ss")</td>
+                                <td>@log.UserName</td>
+                                <td>
+                                    @if (log.Action == "Create")
+                                    {
+                                        <span class="badge badge-success">➕ Создание</span>
+                                    }
+                                    else if (log.Action == "Delete")
+                                    {
+                                        <span class="badge badge-danger">🗑️ Удаление</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-secondary">@log.Action</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (log.Entity == "WoodMovement")
+                                    {
+                                        <span>📦 Приход/расход</span>
+                                    }
+                                    else if (log.Entity == "Production")
+                                    {
+                                        <span>⚙️ Производство</span>
+                                    }
+                                    else if (log.Entity == "Shipment")
+                                    {
+                                        <span>🚛 Отгрузка</span>
+                                    }
+                                    else if (log.Entity == "User")
+                                    {
+                                        <span>👤 Пользователь</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@log.Entity</span>
+                                    }
+                                </td>
+                                <td>@(string.IsNullOrEmpty(log.Details) ? "—" : (log.Details.Length > 100 ? log.Details.Substring(0, 100) + "..." : log.Details))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .filter-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 24px;
+        border: 1px solid #e2e8f0;
+    }
+    .filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-end;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .filter-group label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+    }
+    .form-control {
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+    }
+    .btn-primary {
+        background: #2d6a4f;
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-outline-primary {
+        background: transparent;
+        border: 1px solid #0d6efd;
+        color: #0d6efd;
+        padding: 6px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+    }
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .badge-success {
+        background: #d1e7dd;
+        color: #0a3622;
+    }
+    .badge-danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .badge-secondary {
+        background: #e9ecef;
+        color: #495057;
+    }
+    .card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    .card-body {
+        padding: 20px;
+    }
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .data-table th, .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+    }
+    .data-table th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #1e2a3a;
+    }
+    .alert-info {
+        background: #cfe2ff;
+        color: #084298;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .text-center {
+        text-align: center;
+    }
+    .text-muted {
+        color: #6c757d;
+    }
+    .py-4 {
+        padding: 40px;
+    }
+</style>

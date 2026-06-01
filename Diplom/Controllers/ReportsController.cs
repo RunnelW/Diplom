@@ -6,7 +6,7 @@ using Diplom.Models;
 
 namespace Diplom.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin,Director,Manager")]
     public class ReportsController : Controller
     {
         private readonly ApplicationDbContext _context;

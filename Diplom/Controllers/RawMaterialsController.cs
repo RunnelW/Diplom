@@ -1,5 +1,6 @@
 ﻿using Diplom.Data;
 using Diplom.Models;
+using Diplom.Services;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -10,16 +11,17 @@ using Microsoft.EntityFrameworkCore;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using static System.Net.Mime.MediaTypeNames;
-using PdfSharp.Pdf;
-using PdfSharp.Drawing;
 
 
 namespace Diplom.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin,Storekeeper")]
     public class RawMaterialsController : Controller
     {
 
+        private readonly AuditService _auditService;
+
+      
 
         public async Task<IActionResult> Index()
         {
@@ -39,10 +41,11 @@ namespace Diplom.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<AppUser> _userManager;
 
-        public RawMaterialsController(ApplicationDbContext context, UserManager<AppUser> userManager)
+        public RawMaterialsController(ApplicationDbContext context, UserManager<AppUser> userManager, AuditService auditService)
         {
             _context = context;
             _userManager = userManager;
+            _auditService = auditService;
         }
 
         // POST: сохранить новую партию с автогенерацией номера
@@ -101,6 +104,7 @@ namespace Diplom.Controllers
                 await _context.SaveChangesAsync();
 
                 TempData["Success"] = $"Партия {model.BatchNumber} добавлена!";
+                await _auditService.LogAsync("Create", "RawMaterial", model.Id, $"Создана партия: {model.BatchNumber}, объём: {model.Volume} м³");
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -108,6 +112,8 @@ namespace Diplom.Controllers
                 ModelState.AddModelError("", "Ошибка: " + ex.Message);
                 return View(new RawMaterial());
             }
+
+            
         }
 
         public async Task<IActionResult> Edit(int? id)
@@ -140,6 +146,7 @@ namespace Diplom.Controllers
                     _context.Update(model);
                     await _context.SaveChangesAsync();
                     TempData["Success"] = "Партия обновлена!";
+                    await _auditService.LogAsync("Edit", "RawMaterial", model.Id, $"Изменена партия: {model.BatchNumber}, объём: {model.Volume} м³");
                     return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
@@ -177,6 +184,7 @@ namespace Diplom.Controllers
             if (item != null) _context.RawMaterials.Remove(item);
             await _context.SaveChangesAsync();
             TempData["Success"] = "Партия удалена!";
+            await _auditService.LogAsync("Delete", "RawMaterial", id, $"Удалена партия ID: {id}");
             return RedirectToAction(nameof(Index));
         }
 
@@ -185,6 +193,7 @@ namespace Diplom.Controllers
         {
             var rawMaterial = await _context.RawMaterials.FindAsync(id);
             if (rawMaterial == null) return NotFound();
+            await _auditService.LogAsync("Download", "Act", id, $"Скачан акт прихода: партия {rawMaterial.BatchNumber}, объём: {rawMaterial.Volume:F2} м³");
 
             string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "templates", "Акт_приема_леса_Template.docx");
             string tempFile = Path.Combine(Path.GetTempPath(), $"Акт_приема_{rawMaterial.BatchNumber}_{DateTime.Now.Ticks}.docx");

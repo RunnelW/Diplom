@@ -1,22 +1,25 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Diplom.Data;
+using Diplom.Models;
+using Diplom.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Diplom.Data;
-using Diplom.Models;
 
 namespace Diplom.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin,Director,Master")]
     public class ProductionController : Controller
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<AppUser> _userManager;
+        private readonly AuditService _auditService;
 
-        public ProductionController(ApplicationDbContext context, UserManager<AppUser> userManager)
+        public ProductionController(ApplicationDbContext context, UserManager<AppUser> userManager, AuditService auditService)
         {
             _context = context;
             _userManager = userManager;
+            _auditService = auditService;
         }
 
         // GET: Список производственных смен
@@ -156,6 +159,7 @@ namespace Diplom.Controllers
             // ============================================================
 
             TempData["Success"] = $"Смена сохранена. Сырьё: {rawVolume:F2} м³, Шпон: {veneerVolume:F2} м³. Эффективность: {model.Efficiency:P0}.";
+            await _auditService.LogAsync("Create", "Production", model.Id, $"Производственная смена: {stack.WoodType}, сырьё: {rawVolume:F2} м³, шпон: {veneerVolume:F2} м³, эффективность: {(veneerVolume / rawVolume):P0}");
             return RedirectToAction("Index");
         }
 
@@ -275,6 +279,7 @@ namespace Diplom.Controllers
 
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Смена обновлена. Сырьё: {rawVolume:F2} м³, Шпон: {veneerVolume:F2} м³, Эффективность: {batch.Efficiency:P0}.";
+            await _auditService.LogAsync("Edit", "Production", batch.Id, $"Изменена смена ID: {batch.Id}");
             return RedirectToAction("Index");
         }
 
@@ -299,6 +304,7 @@ namespace Diplom.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Смена удалена.";
+            await _auditService.LogAsync("Delete", "Production", id, $"Удалена смена ID: {id}");
             return RedirectToAction("Index");
         }
     }

@@ -1,5 +1,6 @@
 ﻿using Diplom.Data;
 using Diplom.Models;
+using Diplom.Services;
 using DocumentFormat.OpenXml.InkML;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -7,12 +8,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PdfSharp.Drawing;
+using PdfSharp.Pdf;
 using SkiaSharp;
 using System.Linq;
 using Xceed.Words.NET;
-using PdfSharp.Pdf;
-using PdfSharp.Drawing;
-
 
 namespace Diplom.Controllers
 {
@@ -21,11 +21,13 @@ namespace Diplom.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<AppUser> _userManager;
+        private readonly AuditService _auditService;
 
-        public WoodMovementsController(ApplicationDbContext context, UserManager<AppUser> userManager)
+        public WoodMovementsController(ApplicationDbContext context, UserManager<AppUser> userManager, AuditService auditService)
         {
             _context = context;
             _userManager = userManager;
+            _auditService = auditService;
         }
 
         // Список движений
@@ -103,8 +105,9 @@ namespace Diplom.Controllers
                 stack.UpdatedAt = DateTime.Now;
 
                 await _context.SaveChangesAsync();
-
+                await _auditService.LogAsync("Create", "WoodMovement", movement.Id, $"Приход: {woodType}, объём: {volume:F2} м³, поставщик: {supplier}");
                 TempData["Success"] = $"Принято {volume:F2} м³ древесины {woodType}. Поставщик: {supplier ?? "не указан"}";
+                
                 return RedirectToAction("Index");
             }
             catch (Exception ex)
@@ -147,6 +150,7 @@ namespace Diplom.Controllers
             stack.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("Create", "WoodMovement", movement.Id, $"Быстрый приход: {woodType}, объём: {volume:F2} м³, поставщик: {supplier ?? "не указан"}");
             TempData["Success"] = $"Принято {volume:F2} м³ {woodType}. Поставщик: {supplier ?? "не указан"}";
             return RedirectToAction("Index", "Home");
         }
@@ -249,8 +253,9 @@ namespace Diplom.Controllers
             
 
             await _context.SaveChangesAsync();
-
+            await _auditService.LogAsync("Edit", "WoodMovement", movement.Id, $"Изменён приход: объём {newVolume:F2} м³");
             TempData["Success"] = $"Движение обновлено. Новый объём: {newVolume:F2} м³.";
+            
             return RedirectToAction("Index");
         }
 
@@ -274,8 +279,9 @@ namespace Diplom.Controllers
 
             _context.WoodMovements.Remove(movement);
             await _context.SaveChangesAsync();
-
+            await _auditService.LogAsync("Delete", "WoodMovement", id, $"Удалён приход ID: {id}");
             TempData["Success"] = "Движение удалено.";
+            
             return RedirectToAction("Index");
         }
 
@@ -289,6 +295,7 @@ namespace Diplom.Controllers
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (movement == null) return NotFound();
+            await _auditService.LogAsync("Download", "Act", id, $"Скачан акт движения: {movement.WoodStack?.WoodType}, объём: {movement.Volume:F2} м³, тип: {movement.MovementType}");
 
             using (var document = new PdfDocument())
             {

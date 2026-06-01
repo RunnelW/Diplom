@@ -1,5 +1,6 @@
 ﻿using Diplom.Data;
 using Diplom.Models;
+using Diplom.Services;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -7,26 +8,31 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PdfSharp.Drawing;
+using PdfSharp.Pdf;
 using System.Text;
+using System.Text.RegularExpressions;
 using Xceed.Document.NET;
 using Xceed.Words.NET;
-using System.Text.RegularExpressions;
-using PdfSharp.Pdf;
-using PdfSharp.Drawing;
 
 
 namespace Diplom.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin,Storekeeper")]
     public class ShipmentController : Controller
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<AppUser> _userManager;
+        private readonly AuditService _auditService;
 
-        public ShipmentController(ApplicationDbContext context, UserManager<AppUser> userManager)
+
+        public ShipmentController(ApplicationDbContext context, UserManager<AppUser> userManager, AuditService auditService)
         {
             _context = context;
             _userManager = userManager;
+            _auditService = auditService;
+
+
         }
 
         // GET: Список отгрузок
@@ -167,6 +173,7 @@ namespace Diplom.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("Create", "Shipment", order.Id, $"Отгрузка: {invoiceNumber}, покупатель: {customer}, объём: {totalVolume:F2} м³");
 
             TempData["Success"] = $"Отгрузка #{invoiceNumber} создана. Всего отгружено: {totalVolume:F2} м³.";
             return RedirectToAction("Index");
@@ -196,6 +203,8 @@ namespace Diplom.Controllers
 
             _context.ShipmentOrders.Remove(order);
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("Delete", "Shipment", id, $"Удалена отгрузка ID: {id}");
+
 
             TempData["Success"] = $"Отгрузка #{order.InvoiceNumber} удалена, остатки возвращены на склад.";
             return RedirectToAction("Index");
@@ -340,20 +349,12 @@ namespace Diplom.Controllers
             order.Items = items;
 
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("Edit", "Shipment", order.Id, $"Изменена отгрузка: {invoiceNumber}");
 
             TempData["Success"] = $"Отгрузка #{invoiceNumber} обновлена. Всего: {totalVolume:F2} м³.";
             return RedirectToAction("Index");
         }
-
-
-
-
-
-
-
-
-
-        // GET: Сформировать акт отгрузки (HTML-вариант с правильным оформлением)
+       
 
         [HttpGet]
         public async Task<IActionResult> GenerateAct(int id)
@@ -364,6 +365,8 @@ namespace Diplom.Controllers
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null) return NotFound();
+            var shipmentTotalVolume = order.Items.Sum(i => i.Volume);
+            await _auditService.LogAsync("Download", "Act", id, $"Скачан акт отгрузки: накладная {order.InvoiceNumber}, покупатель: {order.Customer}, объём: {shipmentTotalVolume:F2} м³");
 
             // Создаём PDF-документ
             using (var document = new PdfDocument())
