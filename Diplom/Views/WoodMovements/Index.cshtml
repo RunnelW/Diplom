@@ -1,10 +1,11 @@
 ﻿@model IEnumerable<Diplom.Models.WoodMovement>
 @{
-    ViewData["Title"] = "Движения древесины";
+    ViewData["Title"] = "Приход древесины";
 }
+
 <div class="page-header">
-    <h2>📋 Движения древесины</h2>
-    <a href="/WoodMovements/Income" class="btn btn-primary">➕ Приход</a>
+    <h2>📦 Приход древесины</h2>
+    <a href="/WoodMovements/Income" class="btn-primary">➕ Новый приход</a>
 </div>
 
 @if (TempData["Success"] != null)
@@ -20,10 +21,9 @@
     <thead>
         <tr>
             <th>Дата</th>
-            <th>Тип</th>
             <th>Древесина</th>
             <th>Объём (м³)</th>
-            <th>Комментарий</th>
+            <th>Поставщик</th>
             <th>Пользователь</th>
             <th>Действия</th>
         </tr>
@@ -33,20 +33,121 @@
         {
             <tr>
                 <td>@m.MovementDate.ToString("dd.MM.yyyy HH:mm")</td>
-                <td>@(m.MovementType == "Income" ? "➕ Приход" : "➖ Расход")</td>
                 <td>@(m.WoodStack?.WoodType ?? "—")</td>
                 <td>@m.Volume.ToString("F2")</td>
-                <td>@m.Comment</td>
-                <td>@(m.CreatedByUser?.FullName ?? m.CreatedByUser?.UserName ?? "—")</td>
+                <td>@m.Supplier</td>
+                <td>@(m.CreatedByUser?.FullName ?? m.CreatedByUser?.UserName)</td>
                 <td class="action-buttons">
-                    <a href="/WoodMovements/Edit/@m.Id" class="btn btn-sm btn-outline-primary">✏️</a>
-                    <form method="post" action="/WoodMovements/DeleteConfirmed/@m.Id" style="display:inline;" onsubmit="return confirm('Удалить движение?');">
+                    <a href="/WoodMovements/Edit/@m.Id" class="btn-action btn-edit">✏️ Изменить</a>
+                    <form method="post" action="/WoodMovements/DeleteConfirmed/@m.Id" style="display:inline;" onsubmit="return confirm('Удалить запись?');">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                        <button type="submit" class="btn-action btn-delete">🗑️ Удалить</button>
                     </form>
-                    <a href="/WoodMovements/GenerateAct/@m.Id" class="btn btn-sm btn-outline-info">📄 Акт</a>
+                    <a href="/WoodMovements/GenerateAct/@m.Id" class="btn-action btn-act">📄 Акт</a>
                 </td>
             </tr>
         }
     </tbody>
 </table>
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .btn-primary {
+        background: #2d6a4f;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.2s;
+    }
+    .btn-primary:hover {
+        background: #1b4332;
+        transform: translateY(-1px);
+    }
+    .alert-success {
+        background: #d1e7dd;
+        color: #0a3622;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .alert-danger {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .data-table th {
+        background: #1e2a3a;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+    }
+    .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .data-table tr:hover {
+        background: #f8fafc;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: none;
+    }
+    .btn-edit {
+        background: #0d6efd;
+        color: white;
+    }
+    .btn-edit:hover {
+        background: #0b5ed7;
+        transform: translateY(-1px);
+    }
+    .btn-delete {
+        background: #dc3545;
+        color: white;
+    }
+    .btn-delete:hover {
+        background: #bb2d3b;
+        transform: translateY(-1px);
+    }
+    .btn-act {
+        background: #17a2b8;
+        color: white;
+    }
+    .btn-act:hover {
+        background: #138496;
+        transform: translateY(-1px);
+    }
+</style>

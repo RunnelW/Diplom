@@ -16,6 +16,7 @@ using Xceed.Document.NET;
 using Xceed.Words.NET;
 
 
+
 namespace Diplom.Controllers
 {
     [Authorize(Roles = "Admin,Storekeeper")]
@@ -354,8 +355,8 @@ namespace Diplom.Controllers
             TempData["Success"] = $"Отгрузка #{invoiceNumber} обновлена. Всего: {totalVolume:F2} м³.";
             return RedirectToAction("Index");
         }
-       
 
+        [HttpGet]
         [HttpGet]
         public async Task<IActionResult> GenerateAct(int id)
         {
@@ -365,6 +366,7 @@ namespace Diplom.Controllers
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null) return NotFound();
+
             var shipmentTotalVolume = order.Items.Sum(i => i.Volume);
             await _auditService.LogAsync("Download", "Act", id, $"Скачан акт отгрузки: накладная {order.InvoiceNumber}, покупатель: {order.Customer}, объём: {shipmentTotalVolume:F2} м³");
 
@@ -372,15 +374,14 @@ namespace Diplom.Controllers
             using (var document = new PdfDocument())
             {
                 var page = document.AddPage();
-                page.Width = 595;  // A4 ширина в пунктах
-                page.Height = 842; // A4 высота в пунктах
+                page.Width = 595;
+                page.Height = 842;
 
                 using (var gfx = XGraphics.FromPdfPage(page))
                 {
-                    // ОДИН ШРИФТ ДЛЯ ВСЕГО (14pt, Times New Roman)
-                    var font = new XFont("Times New Roman", 14);
+                    // Используем стандартный шрифт (есть везде)
+                    var font = new XFont("Arial", 14);
 
-                    // Отступы: 2 см = 56.7 pt, 1 см = 28.35 pt
                     double leftMargin = 56.7;
                     double rightMargin = 28.35;
                     double topMargin = 56.7;
@@ -393,7 +394,7 @@ namespace Diplom.Controllers
                     yPos += 35;
 
                     // ДАТА И ПОКУПАТЕЛЬ
-                    gfx.DrawString($"от «{order.ShipmentDate:dd.MM.yyyy}» г.", font, XBrushes.Black, leftMargin, yPos);
+                    gfx.DrawString($"от {order.ShipmentDate:dd.MM.yyyy}", font, XBrushes.Black, leftMargin, yPos);
                     yPos += 20;
                     gfx.DrawString($"Покупатель: {order.Customer}", font, XBrushes.Black, leftMargin, yPos);
                     yPos += 30;
@@ -455,10 +456,7 @@ namespace Diplom.Controllers
                     gfx.DrawString(totalVolume.ToString("F2"), font, XBrushes.Black,
                         new XRect(xPos + 5, yPos + 2, colWidths[3] - 10, rowHeight - 4), XStringFormats.TopRight);
                     yPos += rowHeight + 20;
-
-                    // КОММЕНТАРИЙ
-                    gfx.DrawString($"Комментарий: {(string.IsNullOrEmpty(order.Comment) ? "—" : order.Comment)}", font, XBrushes.Black, leftMargin, yPos);
-                    yPos += 40;
+                   
 
                     // ПОДПИСИ (на одной строке)
                     double halfWidth = pageWidth / 2;
@@ -471,7 +469,6 @@ namespace Diplom.Controllers
                     gfx.DrawString("М.П.", font, XBrushes.Black, leftMargin + halfWidth, yPos);
                 }
 
-                // Сохраняем в массив байтов
                 using (var stream = new MemoryStream())
                 {
                     document.Save(stream, false);
@@ -479,25 +476,6 @@ namespace Diplom.Controllers
                     return File(fileContent, "application/pdf", $"Акт_отгрузки_{order.InvoiceNumber}.pdf");
                 }
             }
-        }
-        // Вспомогательный метод для создания ячейки таблицы (ТОЧНО КАК В ПРИХОДЕ)
-        private DocumentFormat.OpenXml.Wordprocessing.TableCell CreateTableCell(string text, bool isHeader = false)
-        {
-            var cell = new DocumentFormat.OpenXml.Wordprocessing.TableCell();
-            var paragraph = new DocumentFormat.OpenXml.Wordprocessing.Paragraph();
-            var run = new DocumentFormat.OpenXml.Wordprocessing.Run();
-            var runText = new DocumentFormat.OpenXml.Wordprocessing.Text(text);
-
-            run.Append(runText);
-            paragraph.Append(run);
-            cell.Append(paragraph);
-
-            if (isHeader)
-            {
-                run.RunProperties = new RunProperties(new Bold());
-            }
-
-            return cell;
         }
 
     }

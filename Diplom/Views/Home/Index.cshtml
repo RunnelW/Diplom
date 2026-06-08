@@ -1,56 +1,49 @@
 ﻿@model IEnumerable<Diplom.Models.WoodStack>
 @{
     ViewData["Title"] = "Панель управления";
+    
+    // Фильтруем штабеля с нулевым объёмом
+    var nonZeroStacks = Model.Where(s => s.CurrentVolume > 0).ToList();
     var recentMovements = ViewBag.RecentMovements as List<Diplom.Models.WoodMovement> ?? new List<Diplom.Models.WoodMovement>();
     var todayIncome = ViewBag.TodayIncome as decimal? ?? 0;
-    var totalWood = Model.Sum(s => s.CurrentVolume);
-    var lowStacks = Model.Where(s => s.CurrentVolume < 10 && s.CurrentVolume > 0).ToList();
+    var totalWood = nonZeroStacks.Sum(s => s.CurrentVolume);
+    var lowStacks = nonZeroStacks.Where(s => s.CurrentVolume < 10 && s.CurrentVolume > 0).ToList();
 }
 
-<!-- УВЕДОМЛЕНИЯ НАВЕРХУ (можно закрыть) -->
+<!-- Уведомления -->
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success alert-dismissible">
-        @TempData["Success"]
-        <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
-    </div>
+    <div class="alert alert-success">@TempData["Success"]</div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger alert-dismissible">
-        @TempData["Error"]
-        <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
-    </div>
+    <div class="alert alert-danger">@TempData["Error"]</div>
 }
 @if (lowStacks.Any())
 {
-    <div class="alert alert-warning alert-dismissible">
+    <div class="alert alert-warning">
         <strong>⚠️ Внимание! Критические остатки:</strong>
         @foreach (var stack in lowStacks)
         {
             <span class="warning-badge">@stack.WoodType (@stack.CurrentVolume.ToString("F1") м³)</span>
         }
-        <button type="button" class="close-btn" onclick="this.parentElement.style.display='none';">&times;</button>
     </div>
 }
 
 <div class="dashboard-grid">
-    <!-- ЛЕВАЯ КОЛОНКА: ДИАГРАММА + ЛЕГЕНДА -->
+    <!-- ЛЕВАЯ КОЛОНКА: ДИАГРАММА -->
     <div class="card">
         <div class="card-header">
             <h3>🌲 Остатки древесины</h3>
         </div>
         <div class="card-body">
-            <div class="chart-wrapper">
-                <canvas id="woodStacksChart" style="max-height: 280px; width: 100%;"></canvas>
-            </div>
-            <!-- ЛЕГЕНДА ПОД ДИАГРАММОЙ -->
+            <canvas id="woodStacksChart" style="max-height: 260px; width: 100%;"></canvas>
             <div class="chart-legend">
-                @foreach (var stack in Model.OrderByDescending(s => s.CurrentVolume))
+                @foreach (var stack in nonZeroStacks.OrderByDescending(s => s.CurrentVolume))
                 {
                     var percent = totalWood > 0 ? (stack.CurrentVolume / totalWood) * 100 : 0;
                     <div class="legend-item">
-                        <span class="legend-color" style="background: @GetColorForWoodType(stack.WoodType);"></span>
+                        <span class="legend-dot" style="background: @GetColor(stack.WoodType);"></span>
                         <span class="legend-name">@stack.WoodType</span>
                         <span class="legend-value">@stack.CurrentVolume.ToString("F1") м³</span>
                         <span class="legend-percent">(@percent.ToString("F0")%)</span>
@@ -66,21 +59,19 @@
             <h3>📊 Сводная информация</h3>
         </div>
         <div class="card-body">
-            <div class="stats-total-card">
-                <span class="total-label">Общий объём</span>
-                <span class="total-value">@totalWood.ToString("F2") м³</span>  <!-- ← Теперь с десятичной частью -->
+            <div class="total-card">
+                <div class="total-label">Общий объём</div>
+                <div class="total-value">@totalWood.ToString("F2") м³</div>
             </div>
             <div class="stats-list">
-                @foreach (var stack in Model.OrderByDescending(s => s.CurrentVolume))
+                @foreach (var stack in nonZeroStacks.OrderByDescending(s => s.CurrentVolume))
                 {
                     var percent = totalWood > 0 ? (stack.CurrentVolume / totalWood) * 100 : 0;
-                    <div class="stats-item">
-                        <div class="stats-info">
-                            <span class="stats-name">@stack.WoodType</span>
-                            <span class="stats-value">@stack.CurrentVolume.ToString("F1") м³</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: @percent.ToString("F0")%; background: @GetColorForWoodType(stack.WoodType);"></div>
+                    <div class="stat-row">
+                        <div class="stat-name">@stack.WoodType</div>
+                        <div class="stat-volume">@stack.CurrentVolume.ToString("F1") м³</div>
+                        <div class="progress-container">
+                            <div class="progress-fill" style="width: @percent.ToString("F0")%; background: @GetColor(stack.WoodType);"></div>
                             <span class="progress-text">@percent.ToString("F0")%</span>
                         </div>
                     </div>
@@ -90,99 +81,83 @@
     </div>
 </div>
 
-<!-- ВТОРОЙ РЯД -->
-<div class="dashboard-grid" style="margin-top: 24px;">
-    <!-- БЛОК БЫСТРОГО ПРИХОДА -->
-    <div class="card">
-        <div class="card-header">
-            <h3>⚡ Быстрый приход</h3>
-        </div>
-        <div class="card-body">
-            <form method="post" action="/WoodMovements/QuickIncome">
-                @Html.AntiForgeryToken()
-                <div class="quick-form">
-                    <div class="form-group">
-                        <label>Тип древесины</label>
-                        <select name="woodType" class="form-control" required>
-                            <option value="">-- Выберите --</option>
-                            @foreach (var stack in Model.OrderBy(s => s.WoodType))
-                            {
-                                <option value="@stack.WoodType">@stack.WoodType (@stack.CurrentVolume.ToString("F1") м³)</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Поставщик</label>
-                        <input type="text" name="supplier" class="form-control" placeholder="Наименование поставщика" />
-                    </div>
-                    <div class="form-group">
-                        <label>Объём (м³)</label>
-                        <input type="number" step="0.01" name="volume" class="form-control" placeholder="0.00" required />
-                    </div>
-                    <button type="submit" class="btn btn-primary">➕ Добавить</button>
-                </div>
-            </form>
-            <div class="quick-link">
-                <a href="/WoodMovements/Income" class="btn-outline-sm">🔧 Полная форма прихода →</a>
-            </div>
-        </div>
+<!-- БЫСТРЫЙ ПРИХОД -->
+<div class="card" style="margin-top: 24px;">
+    <div class="card-header">
+        <h3>⚡ Быстрый приход</h3>
     </div>
-
-    <!-- БЛОК ПОСЛЕДНИХ ДВИЖЕНИЙ -->
-    <div class="card">
-        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <h3>🔄 Последние движения</h3>
-            <a href="/WoodMovements" class="btn-outline-sm">Все движения →</a>
-        </div>
-        <div class="card-body" style="padding: 0;">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Дата</th>
-                        <th>Тип</th>
-                        <th>Древесина</th>
-                        <th>Объём</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!recentMovements.Any())
-                    {
-                        <tr>
-                            <td colspan="4" class="text-center" style="padding: 40px;">Нет движений</td>
-                        </tr>
-                    }
-                    else
-                    {
-                        @foreach (var m in recentMovements.Take(5))
-                        {
-                            <tr>
-                                <td>@m.MovementDate.ToString("dd.MM HH:mm")</td>
-                                <td>@(m.MovementType == "Income" ? "➕ Приход" : "➖ Расход")</td>
-                                <td>@(m.WoodStack?.WoodType ?? "—")</td>
-                                <td>@m.Volume.ToString("F2") м³</td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
+    <div class="card-body">
+        <form method="post" action="/WoodMovements/QuickIncome" class="quick-form">
+            @Html.AntiForgeryToken()
+            <select name="woodType" class="form-control" required>
+                <option value="">-- Выберите тип --</option>
+                @foreach (var stack in nonZeroStacks.OrderBy(s => s.WoodType))
+                {
+                    <option value="@stack.WoodType">@stack.WoodType (@stack.CurrentVolume.ToString("F1") м³)</option>
+                }
+            </select>
+            <input type="text" name="supplier" class="form-control" placeholder="Поставщик" />
+            <input type="number" step="0.01" name="volume" class="form-control" placeholder="Объём (м³)" required />
+            <button type="submit" class="btn-primary">➕ Добавить</button>
+        </form>
+        <div class="quick-link">
+            <a href="/WoodMovements/Income">🔧 Полная форма прихода →</a>
         </div>
     </div>
 </div>
 
+<!-- ПОСЛЕДНИЕ ДВИЖЕНИЯ -->
+<div class="card" style="margin-top: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between;">
+        <h3>🔄 Последние движения</h3>
+        <a href="/WoodMovements" class="link-all">Все движения →</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Тип</th>
+                    <th>Древесина</th>
+                    <th>Объём</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!recentMovements.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="empty-text">Нет движений</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var m in recentMovements.Take(5))
+                    {
+                        <tr>
+                            <td>@m.MovementDate.ToString("dd.MM HH:mm")</td>
+                            <td>@(m.MovementType == "Income" ? "➕ Приход" : "➖ Расход")</td>
+                            <td>@(m.WoodStack?.WoodType ?? "—")</td>
+                            <td>@m.Volume.ToString("F2") м³</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
 @functions {
-    private string GetColorForWoodType(string woodType)
+    private string GetColor(string woodType)
     {
-        var colors = new Dictionary<string, string>
+        switch (woodType)
         {
-            { "Берёза", "#2d6a4f" },
-            { "Сосна", "#40916c" },
-            { "Ель", "#52b788" },
-            { "Дуб", "#74c69d" },
-            { "Лиственница", "#1e2a3a" },
-            { "Клён", "#3a5a6a" },
-            { "Ольха", "#95d5b2" }
-        };
-        return colors.ContainsKey(woodType) ? colors[woodType] : "#2d6a4f";
+            case "Берёза": return "#2d6a4f";
+            case "Сосна": return "#40916c";
+            case "Ель": return "#52b788";
+            case "Дуб": return "#74c69d";
+            case "Лиственница": return "#95d5b2";
+            default: return "#2d6a4f";
+        }
     }
 }
 
@@ -192,165 +167,92 @@
         grid-template-columns: 1fr 1fr;
         gap: 24px;
     }
-    /* Уведомления */
-    .alert {
-        padding: 12px 20px;
-        border-radius: 12px;
-        margin-bottom: 20px;
-        position: relative;
-    }
-    .alert-success {
-        background: #d1e7dd;
-        color: #0a3622;
-        border-left: 4px solid #0a3622;
-    }
-    .alert-danger {
-        background: #f8d7da;
-        color: #721c24;
-        border-left: 4px solid #dc3545;
-    }
-    .alert-warning {
-        background: #fff3cd;
-        color: #856404;
-        border-left: 4px solid #ffc107;
-    }
-    .close-btn {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: none;
-        border: none;
-        font-size: 20px;
-        cursor: pointer;
-        color: inherit;
-        opacity: 0.7;
-    }
-    .close-btn:hover {
-        opacity: 1;
-    }
-    .warning-badge {
-        background: #ffc107;
-        color: #1e2a3a;
-        padding: 2px 8px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        margin-left: 8px;
-        display: inline-block;
-    }
-    /* Карточки */
+
     .card {
         background: white;
         border-radius: 20px;
         border: 1px solid #e2e8f0;
         overflow: hidden;
     }
+
     .card-header {
         padding: 16px 20px;
-        border-bottom: 1px solid #e2e8f0;
         background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
     }
+
     .card-header h3 {
         margin: 0;
         font-size: 16px;
         font-weight: 600;
+        color: #1e2a3a;
     }
+
     .card-body {
         padding: 20px;
     }
-    .chart-wrapper {
-        max-width: 280px;
-        margin: 0 auto;
-    }
-    .chart-legend {
-        margin-top: 20px;
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px 16px;
-        border-top: 1px solid #e2e8f0;
-        padding-top: 16px;
-    }
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-    }
-    .legend-color {
-        width: 12px;
-        height: 12px;
-        border-radius: 4px;
-        flex-shrink: 0;
-    }
-    .legend-name {
-        font-weight: 600;
-        color: #1e2a3a;
-        flex: 1;
-    }
-    .legend-value {
-        color: #64748b;
-        font-family: monospace;
-    }
-    .legend-percent {
-        color: #2d6a4f;
-    }
-    .stats-total-card {
-        text-align: center;
-        padding: 16px;
+
+    .total-card {
         background: linear-gradient(135deg, #1e2a3a 0%, #2a3a4a 100%);
         border-radius: 16px;
+        padding: 20px;
+        text-align: center;
         margin-bottom: 20px;
     }
-    .stats-total-card .total-label {
-        display: block;
+
+    .total-label {
         font-size: 13px;
         color: #8a9bb0;
-        margin-bottom: 4px;
-    }
-    .stats-total-card .total-value {
         display: block;
+    }
+
+    .total-value {
         font-size: 32px;
         font-weight: 700;
         color: white;
+        display: block;
     }
+
     .stats-list {
         display: flex;
         flex-direction: column;
         gap: 16px;
-        max-height: 400px;
-        overflow-y: auto;
-        padding-right: 8px;
     }
-    .stats-item {
-        width: 100%;
-    }
-    .stats-info {
+
+    .stat-row {
         display: flex;
-        justify-content: space-between;
-        margin-bottom: 6px;
-        font-size: 13px;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
     }
-    .stats-name {
+
+    .stat-name {
+        width: 100px;
         font-weight: 600;
         color: #1e2a3a;
     }
-    .stats-value {
-        color: #64748b;
+
+    .stat-volume {
+        width: 70px;
+        text-align: right;
         font-family: monospace;
+        color: #64748b;
     }
-    .progress-bar {
+
+    .progress-container {
+        flex: 1;
         background: #e2e8f0;
         border-radius: 20px;
-        overflow: hidden;
         height: 28px;
         position: relative;
+        overflow: hidden;
     }
+
     .progress-fill {
         height: 100%;
         border-radius: 20px;
-        transition: width 0.5s ease;
     }
+
     .progress-text {
         position: absolute;
         left: 50%;
@@ -361,95 +263,166 @@
         color: #1e2a3a;
         text-shadow: 0 0 2px white;
     }
-    /* Быстрый приход */
+
+    .chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 20px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+    }
+
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+    }
+
+    .legend-name {
+        font-weight: 600;
+        color: #1e2a3a;
+    }
+
+    .legend-value {
+        color: #64748b;
+        font-family: monospace;
+    }
+
+    .legend-percent {
+        color: #2d6a4f;
+    }
+
     .quick-form {
         display: flex;
+        flex-wrap: wrap;
         gap: 12px;
         align-items: flex-end;
-        flex-wrap: wrap;
     }
-    .quick-form .form-group {
-        flex: 1;
-        margin-bottom: 0;
-    }
-    .quick-form .form-group label {
-        font-size: 12px;
-        margin-bottom: 4px;
-    }
+
     .quick-form .form-control {
-        padding: 8px 10px;
-        font-size: 13px;
+        flex: 1;
+        min-width: 120px;
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
     }
+
+    .btn-primary {
+        background: #2d6a4f;
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    .btn-primary:hover {
+        background: #1b4332;
+    }
+
     .quick-link {
         text-align: right;
         margin-top: 12px;
         padding-top: 12px;
         border-top: 1px solid #e2e8f0;
     }
-    .btn-outline-sm {
-        background: transparent;
-        border: 1px solid #cbd5e1;
-        padding: 4px 10px;
-        border-radius: 8px;
+
+    .quick-link a {
+        color: #2d6a4f;
+        font-size: 13px;
         text-decoration: none;
-        color: #334155;
-        font-size: 11px;
-        transition: all 0.2s;
     }
-    .btn-outline-sm:hover {
-        background: #f1f5f9;
-        border-color: #2d6a4f;
+
+    .link-all {
+        color: #2d6a4f;
+        font-size: 13px;
+        text-decoration: none;
     }
+
     .data-table {
         width: 100%;
         border-collapse: collapse;
     }
-    .data-table th, .data-table td {
-        padding: 12px 16px;
-        border-bottom: 1px solid #e2e8f0;
-        text-align: left;
-    }
+
     .data-table th {
         background: #f8fafc;
+        padding: 12px;
+        text-align: left;
         font-weight: 600;
         color: #1e2a3a;
+        border-bottom: 1px solid #e2e8f0;
     }
-    .text-center {
+
+    .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .empty-text {
         text-align: center;
+        padding: 40px;
+        color: #94a3b8;
     }
-    .form-group label {
-        display: block;
-        font-weight: 500;
-        margin-bottom: 6px;
-        font-size: 13px;
+
+    .alert-success {
+        background: #d1e7dd;
+        color: #0a3622;
+        padding: 12px;
+        border-radius: 12px;
+        margin-bottom: 20px;
     }
-    .form-control {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 10px;
+
+    .alert-danger {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 12px;
+        border-radius: 12px;
+        margin-bottom: 20px;
     }
-    .btn-primary {
-        background: #2d6a4f;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-weight: 500;
-        cursor: pointer;
+
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        padding: 12px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
     }
-    .btn-primary:hover {
-        background: #1b4332;
+
+    .warning-badge {
+        background: #ffc107;
+        color: #1e2a3a;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
     }
+
     @@media (max-width: 768px) {
         .dashboard-grid {
             grid-template-columns: 1fr;
         }
+
         .quick-form {
             flex-direction: column;
-            align-items: stretch;
         }
-        .chart-legend {
-            grid-template-columns: 1fr;
+
+        .quick-form .btn-primary {
+            width: 100%;
+        }
+
+        .stat-name {
+            width: 80px;
         }
     }
 </style>
@@ -457,19 +430,29 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const stacks = @Html.Raw(Json.Serialize(Model.Select(s => new { s.WoodType, s.CurrentVolume })));
+        const stacks = @Html.Raw(Json.Serialize(nonZeroStacks.Select(s => new { s.WoodType, s.CurrentVolume })));
         if (stacks.length === 0) return;
-        
+
+        function getColor(woodType) {
+            switch (woodType) {
+                case 'Берёза': return '#2d6a4f';
+                case 'Сосна': return '#40916c';
+                case 'Ель': return '#52b788';
+                case 'Дуб': return '#74c69d';
+                case 'Лиственница': return '#95d5b2';
+                default: return '#2d6a4f';
+            }
+        }
+
         const ctx = document.getElementById('woodStacksChart').getContext('2d');
-        const colors = ['#2d6a4f', '#40916c', '#52b788', '#74c69d', '#95d5b2', '#1e2a3a', '#2a3a4a', '#3a5a6a'];
-        
+
         new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: stacks.map(s => s.woodType),
                 datasets: [{
                     data: stacks.map(s => s.currentVolume),
-                    backgroundColor: colors,
+                    backgroundColor: stacks.map(s => getColor(s.woodType)),
                     borderWidth: 0,
                     hoverOffset: 8
                 }]
@@ -477,6 +460,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
+                cutout: '60%',
                 plugins: {
                     legend: { display: false },
                     tooltip: {

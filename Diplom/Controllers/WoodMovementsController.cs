@@ -107,7 +107,7 @@ namespace Diplom.Controllers
                 await _context.SaveChangesAsync();
                 await _auditService.LogAsync("Create", "WoodMovement", movement.Id, $"Приход: {woodType}, объём: {volume:F2} м³, поставщик: {supplier}");
                 TempData["Success"] = $"Принято {volume:F2} м³ древесины {woodType}. Поставщик: {supplier ?? "не указан"}";
-                
+
                 return RedirectToAction("Index");
             }
             catch (Exception ex)
@@ -250,12 +250,12 @@ namespace Diplom.Controllers
             movement.Coefficient = coefficient;
             movement.Supplier = supplier;
             movement.Comment = comment;
-            
+
 
             await _context.SaveChangesAsync();
             await _auditService.LogAsync("Edit", "WoodMovement", movement.Id, $"Изменён приход: объём {newVolume:F2} м³");
             TempData["Success"] = $"Движение обновлено. Новый объём: {newVolume:F2} м³.";
-            
+
             return RedirectToAction("Index");
         }
 
@@ -281,7 +281,7 @@ namespace Diplom.Controllers
             await _context.SaveChangesAsync();
             await _auditService.LogAsync("Delete", "WoodMovement", id, $"Удалён приход ID: {id}");
             TempData["Success"] = "Движение удалено.";
-            
+
             return RedirectToAction("Index");
         }
 
@@ -291,11 +291,11 @@ namespace Diplom.Controllers
         {
             var movement = await _context.WoodMovements
                 .Include(m => m.WoodStack)
-                .Include(m => m.CreatedByUser)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (movement == null) return NotFound();
-            await _auditService.LogAsync("Download", "Act", id, $"Скачан акт движения: {movement.WoodStack?.WoodType}, объём: {movement.Volume:F2} м³, тип: {movement.MovementType}");
+
+            await _auditService.LogAsync("Download", "Act", id, $"Скачан акт прихода: {movement.WoodStack?.WoodType}, объём: {movement.Volume:F2} м³");
 
             using (var document = new PdfDocument())
             {
@@ -305,8 +305,7 @@ namespace Diplom.Controllers
 
                 using (var gfx = XGraphics.FromPdfPage(page))
                 {
-                    // ОДИН ШРИФТ - БЕЗ ЖИРНОГО
-                    var font = new XFont("Times New Roman", 14);
+                    var font = new XFont("Arial", 14);
 
                     double leftMargin = 56.7;
                     double rightMargin = 28.35;
@@ -315,7 +314,7 @@ namespace Diplom.Controllers
                     double pageWidth = page.Width - leftMargin - rightMargin;
 
                     // ЗАГОЛОВОК
-                    gfx.DrawString($"АКТ ПРИЁМКИ № {movement.Id}", font, XBrushes.Black,
+                    gfx.DrawString($"АКТ ПРИХОДА № {movement.Id}", font, XBrushes.Black,
                         new XRect(leftMargin, yPos, pageWidth, 30), XStringFormats.TopCenter);
                     yPos += 35;
 
@@ -324,7 +323,7 @@ namespace Diplom.Controllers
                     yPos += 20;
 
                     // ПОСТАВЩИК
-                    string supplier = movement.Supplier ?? movement.CreatedByUser?.FullName ?? "Не указан";
+                    string supplier = movement.Supplier ?? "Не указан";
                     gfx.DrawString($"Поставщик: {supplier}", font, XBrushes.Black, leftMargin, yPos);
                     yPos += 30;
 
@@ -332,58 +331,56 @@ namespace Diplom.Controllers
                     gfx.DrawString("Принята следующая продукция:", font, XBrushes.Black, leftMargin, yPos);
                     yPos += 20;
 
-                    // ТАБЛИЦА
-                    double[] colWidths = { pageWidth * 0.12, pageWidth * 0.38, pageWidth * 0.15, pageWidth * 0.2, pageWidth * 0.15 };
+                    // ТАБЛИЦА (3 колонки: №, Тип древесины, Объём)
+                    double[] colWidths = { pageWidth * 0.15, pageWidth * 0.55, pageWidth * 0.3 };
                     double xPos = leftMargin;
                     double rowHeight = 22;
 
                     // Заголовки таблицы
-                    string[] headers = { "№", "Порода", "Сорт", "Объём (м³)", "Примечание " };
+                    string[] headers = { "№", "Тип древесины", "Объём (м³)" };
                     for (int i = 0; i < headers.Length; i++)
                     {
                         gfx.DrawRectangle(XPens.Black, xPos, yPos, colWidths[i], rowHeight);
                         gfx.DrawString(headers[i], font, XBrushes.Black,
-                            new XRect(xPos + 4, yPos + 3, colWidths[i] - 8, rowHeight - 6), XStringFormats.TopLeft);
+                            new XRect(xPos + 5, yPos + 2, colWidths[i] - 10, rowHeight - 4), XStringFormats.TopLeft);
                         xPos += colWidths[i];
                     }
                     yPos += rowHeight;
 
-                    // Данные таблицы
+                    // Данные таблицы (без Grade)
                     xPos = leftMargin;
-                    string[] cells = { "1", movement.WoodStack?.WoodType ?? "—", "1", movement.Volume.ToString("F2"), movement.Comment ?? "" };
+                    string[] cells = { "1", movement.WoodStack?.WoodType ?? "-", movement.Volume.ToString("F2") };
                     for (int i = 0; i < cells.Length; i++)
                     {
                         gfx.DrawRectangle(XPens.Black, xPos, yPos, colWidths[i], rowHeight);
-                        XStringFormat format = (i == 3) ? XStringFormats.TopRight : XStringFormats.TopLeft;
+                        XStringFormat format = (i == 2) ? XStringFormats.TopRight : XStringFormats.TopLeft;
                         gfx.DrawString(cells[i], font, XBrushes.Black,
-                            new XRect(xPos + 4, yPos + 3, colWidths[i] - 8, rowHeight - 6), format);
+                            new XRect(xPos + 5, yPos + 2, colWidths[i] - 10, rowHeight - 4), format);
                         xPos += colWidths[i];
                     }
                     yPos += rowHeight;
 
                     // Итого
                     xPos = leftMargin;
-                    gfx.DrawRectangle(XPens.Black, xPos, yPos, colWidths[0] + colWidths[1] + colWidths[2], rowHeight);
-                    gfx.DrawString("Итого: ", font, XBrushes.Black,
-                        new XRect(xPos + colWidths[0] + colWidths[1] + colWidths[2] - 45, yPos + 3, 45, rowHeight - 6),
+                    gfx.DrawRectangle(XPens.Black, xPos, yPos, colWidths[0] + colWidths[1], rowHeight);
+                    gfx.DrawString("Итого:", font, XBrushes.Black,
+                        new XRect(xPos + colWidths[0] + colWidths[1] - 40, yPos + 2, 40, rowHeight - 4),
                         XStringFormats.TopRight);
-                    xPos += colWidths[0] + colWidths[1] + colWidths[2];
-                    gfx.DrawRectangle(XPens.Black, xPos, yPos, colWidths[3], rowHeight);
+                    xPos += colWidths[0] + colWidths[1];
+                    gfx.DrawRectangle(XPens.Black, xPos, yPos, colWidths[2], rowHeight);
                     gfx.DrawString(movement.Volume.ToString("F2"), font, XBrushes.Black,
-                        new XRect(xPos + 4, yPos + 3, colWidths[3] - 8, rowHeight - 6), XStringFormats.TopRight);
+                        new XRect(xPos + 5, yPos + 2, colWidths[2] - 10, rowHeight - 4), XStringFormats.TopRight);
                     yPos += rowHeight + 20;
 
-                    // КОММЕНТАРИЙ
-                    gfx.DrawString($"Комментарий: {(string.IsNullOrEmpty(movement.Comment) ? "—" : movement.Comment)}", font, XBrushes.Black, leftMargin, yPos);
-                    yPos += 40;
+                    
 
-                    // ПОДПИСИ (на одной строке)
+                    // ПОДПИСИ
                     double halfWidth = pageWidth / 2;
                     gfx.DrawString("Сдал: _________________________", font, XBrushes.Black, leftMargin, yPos);
                     gfx.DrawString("Принял: _________________________", font, XBrushes.Black, leftMargin + halfWidth, yPos);
                     yPos += 25;
 
-                    // ПЕЧАТИ (на одной строке)
+                    // ПЕЧАТИ
                     gfx.DrawString("М.П.", font, XBrushes.Black, leftMargin, yPos);
                     gfx.DrawString("М.П.", font, XBrushes.Black, leftMargin + halfWidth, yPos);
                 }
@@ -392,9 +389,11 @@ namespace Diplom.Controllers
                 {
                     document.Save(stream, false);
                     byte[] fileContent = stream.ToArray();
-                    return File(fileContent, "application/pdf", $"Акт_приема_{movement.Id}.pdf");
+                    return File(fileContent, "application/pdf", $"Акт_прихода_{movement.Id}.pdf");
                 }
             }
         }
+
+
     }
 }
