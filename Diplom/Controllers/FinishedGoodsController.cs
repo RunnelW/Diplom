@@ -20,12 +20,13 @@ namespace Diplom.Controllers
         public async Task<IActionResult> Index()
         {
             var stocks = await _context.FinishedGoodsStocks
-                .Where(s => s.Volume > 0)  // ← Добавляем фильтр: только остатки > 0
+                .Where(s => s.Volume > 0)  
                 .OrderBy(s => s.WoodType)
                 .ThenBy(s => s.SheetLength)
                 .ThenBy(s => s.SheetWidth)
                 .ToListAsync();
             return View(stocks);
         }
+
     }
 }

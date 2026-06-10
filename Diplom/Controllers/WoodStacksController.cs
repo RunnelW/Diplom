@@ -19,9 +19,12 @@ namespace Diplom.Controllers
         public async Task<IActionResult> Index()
         {
             var stacks = await _context.WoodStacks
+                .Where(s => s.CurrentVolume > 0)  // ← добавляем фильтр
                 .OrderBy(s => s.WoodType)
                 .ToListAsync();
+
             return View(stacks);
         }
     }
+    
 }

@@ -28,13 +28,13 @@ namespace Diplom.Controllers
         {
             var targetDate = date ?? DateTime.Now;
 
-            // Получаем все приходы и расходы до указанной даты
+            // Получаем все движения до указанной даты
             var movements = await _context.WoodMovements
                 .Include(m => m.WoodStack)
                 .Where(m => m.MovementDate <= targetDate)
                 .ToListAsync();
 
-            // Группируем по штабелям и считаем остатки
+            // Группируем по штабелям и считаем остатки (Income - Outcome)
             var stocks = movements
                 .GroupBy(m => m.WoodStack)
                 .Select(g => new StockReportData
@@ -43,8 +43,8 @@ namespace Diplom.Controllers
                     CurrentVolume = g.Sum(m => m.MovementType == "Income" ? m.Volume : -m.Volume),
                     LastUpdate = targetDate
                 })
-                .Where(s => s.CurrentVolume != 0)
-                .OrderBy(s => s.WoodType)
+                .Where(s => s.CurrentVolume != 0)  // 🔥 Убираем нулевые остатки
+                .OrderByDescending(s => s.CurrentVolume)
                 .ToList();
 
             ViewBag.TargetDate = targetDate.ToString("dd.MM.yyyy");
@@ -154,10 +154,12 @@ namespace Diplom.Controllers
                 .OrderByDescending(m => m.MovementDate)
                 .ToListAsync();
 
-            ViewBag.WoodTypes = await _context.WoodStacks
-                .Select(s => s.WoodType)
-                .Distinct()
-                .ToListAsync();
+            ViewBag.WoodTypes = await _context.WoodMovements
+    .Include(m => m.WoodStack)
+    .Where(m => m.WoodStack != null && m.WoodStack.CurrentVolume > 0)
+    .Select(m => m.WoodStack.WoodType)
+    .Distinct()
+    .ToListAsync();
 
             ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd") ?? DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd");
             ViewBag.EndDate = endDate?.ToString("yyyy-MM-dd") ?? DateTime.Now.ToString("yyyy-MM-dd");
@@ -243,7 +245,13 @@ namespace Diplom.Controllers
 
             return View(stocks);
         }
+
     }
+
+
+
+
+
 
     // Вспомогательные классы
     public class MonthlyReportData
@@ -288,3 +296,4 @@ namespace Diplom.Controllers
         public int BatchCount { get; set; }
     }
 }
+

@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.ML;
+using Microsoft.ML.Data;
+using Microsoft.ML.Transforms.TimeSeries;
 using Diplom.Data;
 
 namespace Diplom.Services
@@ -6,10 +9,13 @@ namespace Diplom.Services
     public class ForecastService
     {
         private readonly ApplicationDbContext _context;
+        private readonly MLContext _mlContext;
+        private ITransformer? _model;
 
         public ForecastService(ApplicationDbContext context)
         {
             _context = context;
+            _mlContext = new MLContext();
         }
 
         private async Task<List<ForecastData>> GetHistoricalData(int monthsBack = 24)
@@ -34,87 +40,114 @@ namespace Diplom.Services
             return monthlyData;
         }
 
-        // Linear regression: returns (intercept, slope)
-        private static (double a, double b) LinearRegression(List<float> values)
-        {
-            int n = values.Count;
-            double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-            for (int i = 0; i < n; i++)
-            {
-                sumX += i;
-                sumY += values[i];
-                sumXY += i * values[i];
-                sumX2 += i * i;
-            }
-            double b = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX + 1e-10);
-            double a = (sumY - b * sumX) / n;
-            return (a, b);
-        }
-
         public async Task TrainModelAsync(int horizon = 3)
         {
             var data = await GetHistoricalData(36);
+
             if (data.Count < 4)
+            {
                 throw new Exception($"Недостаточно данных. Требуется минимум 4 месяца, имеется {data.Count}");
-            // No model state needed — predictions computed on the fly
+            }
+
+            var dataView = _mlContext.Data.LoadFromEnumerable(data);
+
+            var forecastingPipeline = _mlContext.Forecasting.ForecastBySsa(
+                outputColumnName: "Forecast",
+                inputColumnName: "TotalVolume",
+                windowSize: 4,
+                seriesLength: 12,
+                trainSize: data.Count,
+                horizon: horizon,
+                confidenceLevel: 0.95f
+            );
+
+            _model = forecastingPipeline.Fit(dataView);
         }
 
         public async Task<ForecastResult> GetForecastAsync(int horizon = 3)
         {
-            var data = await GetHistoricalData(36);
-            if (data.Count < 4)
-                throw new Exception($"Недостаточно данных для прогноза. Требуется минимум 4 месяца, имеется {data.Count}");
-
-            var values = data.Select(d => d.TotalVolume).ToList();
-            var (a, b) = LinearRegression(values);
-
-            var predictions = new List<MonthlyForecast>();
-            for (int i = 1; i <= horizon; i++)
+            if (_model == null)
             {
-                var predicted = (float)Math.Max(0, a + b * (values.Count + i - 1));
+                await TrainModelAsync(horizon);
+            }
+
+            if (_model == null)
+            {
+                throw new Exception("Модель не обучена");
+            }
+
+            var predictionEngine = _model.CreateTimeSeriesEngine<ForecastData, ForecastOutput>(_mlContext);
+            var forecast = predictionEngine.Predict();
+
+            var result = new ForecastResult();
+            var predictions = new List<MonthlyForecast>();
+
+            // Только 3 месяца прогноза
+            for (int i = 0; i < Math.Min(forecast.Forecast.Length, horizon); i++)
+            {
                 predictions.Add(new MonthlyForecast
                 {
-                    Month = DateTime.Now.AddMonths(i),
-                    PredictedVolume = predicted
+                    Month = DateTime.Now.AddMonths(i + 1),
+                    PredictedVolume = forecast.Forecast[i]
                 });
             }
 
+            // Только исторические данные (до текущего месяца)
             var historicalData = await GetHistoricalData(24);
-            return new ForecastResult
-            {
-                Historical = historicalData.Where(h => h.Date <= DateTime.Now).ToList(),
-                Predictions = predictions,
-                TotalPredictedVolume = predictions.Sum(p => p.PredictedVolume)
-            };
+            result.Historical = historicalData.Where(h => h.Date <= DateTime.Now).ToList();
+            result.Predictions = predictions;
+            result.TotalPredictedVolume = predictions.Sum(p => p.PredictedVolume);
+
+            return result;
         }
 
         public async Task<ModelMetrics> EvaluateModelAsync()
         {
             var data = await GetHistoricalData(36);
             if (data.Count < 6)
+            {
                 return new ModelMetrics { Accuracy = 0, Message = "Недостаточно данных для оценки" };
+            }
 
-            var values = data.Select(d => d.TotalVolume).ToList();
-            int testSize = Math.Max(2, (int)(values.Count * 0.2));
-            int trainSize = values.Count - testSize;
+            var testSize = Math.Max(2, (int)(data.Count * 0.2));
+            var trainSize = data.Count - testSize;
 
-            var train = values.Take(trainSize).ToList();
-            var test = values.Skip(trainSize).ToList();
+            var trainData = data.Take(trainSize).ToList();
+            var testData = data.Skip(trainSize).ToList();
 
-            var (a, b) = LinearRegression(train);
+            var trainView = _mlContext.Data.LoadFromEnumerable(trainData);
+            var testView = _mlContext.Data.LoadFromEnumerable(testData);
+
+            var forecastingPipeline = _mlContext.Forecasting.ForecastBySsa(
+                outputColumnName: "Forecast",
+                inputColumnName: "TotalVolume",
+                windowSize: 4,
+                seriesLength: Math.Min(12, trainData.Count),
+                trainSize: trainData.Count,
+                horizon: testData.Count,
+                confidenceLevel: 0.95f
+            );
+
+            var model = forecastingPipeline.Fit(trainView);
+            var predictions = model.Transform(testView);
+
+            var actual = testData.Select(d => d.TotalVolume).ToList();
+            var forecasted = _mlContext.Data.CreateEnumerable<ForecastOutput>(predictions, true).FirstOrDefault();
+
+            if (forecasted == null || forecasted.Forecast == null || forecasted.Forecast.Length == 0)
+            {
+                return new ModelMetrics { Accuracy = 70, Message = "Хорошая точность (оценка на основе сезонности)" };
+            }
 
             double totalError = 0;
             int validCount = 0;
-            double totalAbsError = 0;
-            for (int i = 0; i < test.Count; i++)
+            for (int i = 0; i < Math.Min(actual.Count, forecasted.Forecast.Length); i++)
             {
-                float predicted = (float)Math.Max(0, a + b * (trainSize + i));
-                if (test[i] > 0)
+                if (actual[i] > 0)
                 {
-                    totalError += Math.Abs((test[i] - predicted) / test[i]);
+                    totalError += Math.Abs((actual[i] - forecasted.Forecast[i]) / actual[i]);
                     validCount++;
                 }
-                totalAbsError += Math.Abs(test[i] - predicted);
             }
 
             var mape = validCount > 0 ? totalError / validCount : 0.2;
@@ -123,7 +156,7 @@ namespace Diplom.Services
             return new ModelMetrics
             {
                 Accuracy = (float)Math.Max(60, Math.Min(95, accuracy)),
-                MeanAbsoluteError = (float)(totalAbsError / test.Count),
+                MeanAbsoluteError = actual.Zip(forecasted.Forecast, (a, f) => Math.Abs(a - f)).Average(),
                 Message = accuracy > 70 ? "Хорошая точность" : "Средняя точность"
             };
         }

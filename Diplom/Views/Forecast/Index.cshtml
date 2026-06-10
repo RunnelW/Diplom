@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Прогнозирование отгрузок";
     var metrics = ViewBag.Metrics as Diplom.Services.ModelMetrics;
-    
+
     // Расчёт статистики по историческим данным
     var historicalVolumes = Model.Historical?.Select(h => h.TotalVolume).ToList() ?? new List<float>();
     var avgVolume = historicalVolumes.Any() ? historicalVolumes.Average() : 0;
@@ -11,7 +11,7 @@
     var lastYearAvg = historicalVolumes.TakeLast(12).Any() ? historicalVolumes.TakeLast(12).Average() : 0;
     var previousYearAvg = historicalVolumes.SkipLast(12).TakeLast(12).Any() ? historicalVolumes.SkipLast(12).TakeLast(12).Average() : 0;
     var growth = previousYearAvg > 0 ? ((lastYearAvg - previousYearAvg) / previousYearAvg) * 100 : 0;
-    
+
     // Определение сезонных пиков
     var monthlyAvg = historicalVolumes.Select((v, i) => new { Month = i % 12, Volume = v })
         .GroupBy(x => x.Month)
@@ -59,7 +59,7 @@
             }
         </div>
     </div>
-    
+
     <div class="metric-card">
         <div class="metric-icon">📦</div>
         <div class="metric-value">@avgVolume.ToString("F0")</div>
@@ -79,14 +79,14 @@
             }
         </div>
     </div>
-    
+
     <div class="metric-card">
         <div class="metric-icon">📈</div>
         <div class="metric-value">@maxVolume.ToString("F0")</div>
         <div class="metric-label">Максимум (м³/мес)</div>
         <div class="metric-sub">мин: @minVolume.ToString("F0") м³</div>
     </div>
-    
+
     <div class="metric-card">
         <div class="metric-icon">🌙</div>
         <div class="metric-value">@string.Join(", ", peakMonths.Take(2))</div>
@@ -131,7 +131,7 @@
                             recommendation = "🟢 Низкий спрос, скорректируйте производство";
                         else
                             recommendation = "🟡 Стабильный спрос, поддерживайте норму";
-                        
+
                         <tr>
                             <td>@pred.Month.ToString("MMMM yyyy")</td>
                             <td><strong>@volume.ToString("F2")</strong></td>
@@ -242,143 +242,175 @@
 <style>
 
     .info-color {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-}
-.color-line {
-    border-radius: 2px;
-}
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+    }
+
+    .color-line {
+        border-radius: 2px;
+    }
 
     /* Кнопка информации */
-.btn-icon-info {
-    background: #e2e8f0;
-    border: none;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    color: #475569;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: 10px;
-}
-.btn-icon-info:hover {
-    background: #2d6a4f;
-    color: white;
-    transform: scale(1.05);
-}
+    .btn-icon-info {
+        background: #e2e8f0;
+        border: none;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #475569;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 10px;
+    }
 
-/* Модальное окно */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    backdrop-filter: blur(3px);
-}
-.modal-content {
-    background-color: white;
-    margin: 8% auto;
-    padding: 0;
-    border-radius: 20px;
-    width: 90%;
-    max-width: 550px;
-    box-shadow: 0 20px 35px rgba(0,0,0,0.2);
-    animation: modalFadeIn 0.3s ease;
-}
-@@keyframes modalFadeIn {
-    from { opacity: 0; transform: translateY(-30px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 18px 24px;
-    border-bottom: 1px solid #e2e8f0;
-    background: linear-gradient(135deg, #1e2a3a 0%, #2a3a4a 100%);
-    border-radius: 20px 20px 0 0;
-}
-.modal-header h3 {
-    margin: 0;
-    color: white;
-}
-.modal-close {
-    color: white;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.2s;
-}
-.modal-close:hover {
-    color: #ffc107;
-}
-.modal-body {
-    padding: 24px;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-.info-section {
-    margin-bottom: 20px;
-}
-.info-color {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
-}
-.color-box {
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
-}
-.info-section h4 {
-    margin: 16px 0 8px 0;
-    color: #1e2a3a;
-}
-.info-section ul {
-    margin: 8px 0 0 20px;
-    color: #475569;
-    line-height: 1.6;
-}
-.info-note {
-    background: #f0f9ff;
-    padding: 12px 16px;
-    border-radius: 12px;
-    font-size: 13px;
-    color: #0369a1;
-    margin-top: 20px;
-    border-left: 4px solid #0ea5e9;
-}
-hr {
-    margin: 16px 0;
-    border-color: #e2e8f0;
-}
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+        .btn-icon-info:hover {
+            background: #2d6a4f;
+            color: white;
+            transform: scale(1.05);
+        }
 
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-    
+    /* Модальное окно */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        backdrop-filter: blur(3px);
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 8% auto;
+        padding: 0;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 550px;
+        box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+        animation: modalFadeIn 0.3s ease;
+    }
+
+    @@keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        background: linear-gradient(135deg, #1e2a3a 0%, #2a3a4a 100%);
+        border-radius: 20px 20px 0 0;
+    }
+
+        .modal-header h3 {
+            margin: 0;
+            color: white;
+        }
+
+    .modal-close {
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+        .modal-close:hover {
+            color: #ffc107;
+        }
+
+    .modal-body {
+        padding: 24px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .info-section {
+        margin-bottom: 20px;
+    }
+
+    .info-color {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .color-box {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+    }
+
+    .info-section h4 {
+        margin: 16px 0 8px 0;
+        color: #1e2a3a;
+    }
+
+    .info-section ul {
+        margin: 8px 0 0 20px;
+        color: #475569;
+        line-height: 1.6;
+    }
+
+    .info-note {
+        background: #f0f9ff;
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-size: 13px;
+        color: #0369a1;
+        margin-top: 20px;
+        border-left: 4px solid #0ea5e9;
+    }
+
+    hr {
+        margin: 16px 0;
+        border-color: #e2e8f0;
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
     .metrics-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 20px;
         margin-bottom: 30px;
     }
+
     .metric-card {
         background: white;
         border-radius: 20px;
@@ -388,46 +420,61 @@ hr {
         border: 1px solid #e2e8f0;
         transition: transform 0.2s;
     }
-    .metric-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-    }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
     .metric-icon {
         font-size: 32px;
         margin-bottom: 10px;
     }
+
     .metric-value {
         font-size: 28px;
         font-weight: 700;
         color: #1e2a3a;
     }
+
     .metric-label {
         font-size: 13px;
         color: #64748b;
         margin-top: 4px;
     }
+
     .metric-trend {
         font-size: 12px;
         margin-top: 8px;
         padding-top: 8px;
         border-top: 1px solid #e2e8f0;
     }
+
     .metric-sub {
         font-size: 11px;
         color: #94a3b8;
         margin-top: 6px;
     }
-    .trend-up { color: #10b981; }
-    .trend-down { color: #ef4444; }
-    .trend-stable { color: #f59e0b; }
-    
+
+    .trend-up {
+        color: #10b981;
+    }
+
+    .trend-down {
+        color: #ef4444;
+    }
+
+    .trend-stable {
+        color: #f59e0b;
+    }
+
     .dashboard-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 24px;
         margin-bottom: 30px;
     }
-    
+
     .recommendations-card {
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
         border-radius: 20px;
@@ -435,46 +482,54 @@ hr {
         overflow: hidden;
         margin-top: 20px;
     }
+
     .recommendations-header {
         padding: 16px 24px;
         background: rgba(255,255,255,0.5);
         border-bottom: 1px solid #bae6fd;
     }
-    .recommendations-header h3 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: #0369a1;
-    }
+
+        .recommendations-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #0369a1;
+        }
+
     .recommendations-body {
         padding: 20px 24px;
         display: flex;
         flex-direction: column;
         gap: 16px;
     }
+
     .recommendation-item {
         display: flex;
         gap: 16px;
         align-items: flex-start;
     }
+
     .rec-icon {
         font-size: 24px;
         flex-shrink: 0;
     }
+
     .rec-content {
         flex: 1;
     }
-    .rec-content strong {
-        display: block;
-        margin-bottom: 4px;
-        color: #1e2a3a;
-    }
-    .rec-content p {
-        margin: 0;
-        font-size: 13px;
-        color: #475569;
-    }
-    
+
+        .rec-content strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #1e2a3a;
+        }
+
+        .rec-content p {
+            margin: 0;
+            font-size: 13px;
+            color: #475569;
+        }
+
     .recommendation {
         display: inline-block;
         padding: 4px 8px;
@@ -482,63 +537,104 @@ hr {
         font-size: 11px;
         font-weight: 500;
     }
-    .recommendation.high {
-        background: #fee2e2;
-        color: #dc2626;
-    }
-    .recommendation.low {
-        background: #d1fae5;
-        color: #059669;
-    }
-    .recommendation.stable {
-        background: #fef3c7;
-        color: #d97706;
-    }
-    
+
+        .recommendation.high {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .recommendation.low {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .recommendation.stable {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
     .card {
         background: white;
         border-radius: 20px;
         border: 1px solid #e2e8f0;
         overflow: hidden;
     }
+
     .card-header {
         padding: 16px 20px;
         border-bottom: 1px solid #e2e8f0;
         background: #f8fafc;
     }
-    .card-header h3 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-    }
+
+        .card-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
     .card-body {
         padding: 20px;
     }
+
     .data-table {
         width: 100%;
         border-collapse: collapse;
     }
-    .data-table th, .data-table td {
-        padding: 10px 12px;
-        border-bottom: 1px solid #e2e8f0;
-        text-align: left;
+
+        .data-table th, .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+        }
+
+        .data-table tfoot {
+            background: #f8fafc;
+            font-weight: 600;
+        }
+
+    .alert-success {
+        background: #d1e7dd;
+        color: #0a3622;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
     }
-    .data-table th {
-        background: #f8fafc;
-        font-weight: 600;
+
+    .alert-danger {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
     }
-    .data-table tfoot {
-        background: #f8fafc;
-        font-weight: 600;
+
+    .btn-outline-primary {
+        background: transparent;
+        border: 1px solid #0d6efd;
+        color: #0d6efd;
+        padding: 6px 16px;
+        border-radius: 8px;
+        cursor: pointer;
     }
-    .alert-success { background: #d1e7dd; color: #0a3622; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
-    .alert-danger { background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
-    .btn-outline-primary { background: transparent; border: 1px solid #0d6efd; color: #0d6efd; padding: 6px 16px; border-radius: 8px; cursor: pointer; }
-    .btn-outline-primary:hover { background: #0d6efd; color: white; }
-    
+
+        .btn-outline-primary:hover {
+            background: #0d6efd;
+            color: white;
+        }
+
     @@media (max-width: 768px) {
-        .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-        .dashboard-grid { grid-template-columns: 1fr; }
+        .metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
@@ -580,31 +676,31 @@ hr {
     document.addEventListener('DOMContentLoaded', function() {
         const historical = @Html.Raw(Json.Serialize(Model.Historical));
         const predictions = @Html.Raw(Json.Serialize(Model.Predictions));
-        
+
         if (!historical || historical.length === 0) {
             console.warn('Нет исторических данных');
             return;
         }
-        
+
         // ОПРЕДЕЛЯЕМ ПОСЛЕДНЮЮ РЕАЛЬНУЮ ДАТУ ОТГРУЗКИ
         const lastRealDate = new Date(Math.max(...historical.map(h => new Date(h.date))));
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         // ФИЛЬТРУЕМ ИСТОРИЧЕСКИЕ ДАННЫЕ ТОЛЬКО ДО ПОСЛЕДНЕЙ РЕАЛЬНОЙ ОТГРУЗКИ
         const filteredHistorical = historical.filter(item => {
             const itemDate = new Date(item.date);
             return itemDate <= lastRealDate;
         });
-        
+
         // Берём последние 12 месяцев истории (до последней отгрузки)
         const last12Months = filteredHistorical.slice(-12);
-        
+
         // ПОДГОТОВКА ДАННЫХ ДЛЯ ГРАФИКА
         const labels = [];
         const historicalData = [];
         const predictedData = [];
-        
+
         // Добавляем исторические данные
         last12Months.forEach(item => {
             const date = new Date(item.date);
@@ -612,7 +708,7 @@ hr {
             historicalData.push(item.totalVolume);
             predictedData.push(null); // null для разрыва линии
         });
-        
+
         // Добавляем прогнозные данные (только будущие месяцы)
         if (predictions && predictions.length > 0) {
             predictions.forEach((pred, index) => {
@@ -623,9 +719,9 @@ hr {
                 predictedData.push(pred.predictedVolume);
             });
         }
-        
+
         const ctx = document.getElementById('forecastChart').getContext('2d');
-        
+
         new Chart(ctx, {
             type: 'line',
             data: {
