@@ -1,104 +1,27 @@
-﻿@model IEnumerable<Diplom.Models.FinishedGoodsStock>
+@model IEnumerable<Diplom.Models.FinishedGoodsStock>
 @{
     ViewData["Title"] = "Склад готовой продукции";
-    var totalVolume = (decimal)ViewBag.TotalVolume;
-    var hasItems = Model.Any();
-    var summary = (IEnumerable<dynamic>)ViewBag.Summary;
+    var totalVolume = Model.Sum(s => s.Volume);
 }
 
 <div class="page-header">
     <h2>📦 Склад готовой продукции (шпон)</h2>
     <div class="header-stats">
-        <span class="total-types">📋 Типов: @summary.Count()</span>
+        <span class="total-types">📋 Позиций: @Model.Count()</span>
         <span class="total-volume">📊 Итого: @totalVolume.ToString("F2") м³</span>
-    </div>
-</div>
-
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon">📦</div>
-        <div class="stat-info">
-            <div class="stat-value">@totalVolume.ToString("F2")</div>
-            <div class="stat-label">Остаток на складе (м³)</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon">📋</div>
-        <div class="stat-info">
-            <div class="stat-value">@summary.Count()</div>
-            <div class="stat-label">Типов древесины</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon">📐</div>
-        <div class="stat-info">
-            <div class="stat-value">@Model.Count()</div>
-            <div class="stat-label">Позиций на складе</div>
-        </div>
-    </div>
-</div>
-
-<div class="dashboard-grid">
-    <div class="card">
-        <div class="card-header"><h3>📋 Остатки по типам древесины</h3></div>
-        <div class="card-body">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Тип древесины</th>
-                        <th>Остаток (м³)</th>
-                        <th>Доля</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in summary)
-                    {
-                        decimal vol = (decimal)item.Volume;
-                        var pct = totalVolume > 0 ? (vol / totalVolume) * 100 : 0;
-                        <tr>
-                            <td><strong>@item.WoodType</strong></td>
-                            <td><span style="color:#2d6a4f;font-weight:600;">@vol.ToString("F2")</span></td>
-                            <td>
-                                <div class="tbl-progress">
-                                    <div class="tbl-fill" style="width:@pct.ToString("F0")%"></div>
-                                    <span class="tbl-pct">@pct.ToString("F1")%</span>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <th>Итого:</th>
-                        <th>@totalVolume.ToString("F2") м³</th>
-                        <th>100%</th>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header"><h3>🥧 Распределение остатков</h3></div>
-        <div class="card-body">
-            <canvas id="stockChart" style="height:280px;max-height:280px;"></canvas>
-        </div>
     </div>
 </div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">
-        <i class="fas fa-check-circle"></i> @TempData["Success"]
-    </div>
+    <div class="alert alert-success">@TempData["Success"]</div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">
-        <i class="fas fa-exclamation-triangle"></i> @TempData["Error"]
-    </div>
+    <div class="alert alert-danger">@TempData["Error"]</div>
 }
 
-@if (!hasItems)
+@if (!Model.Any())
 {
     <div class="empty-state">
         <div class="empty-icon">📭</div>
@@ -114,7 +37,6 @@ else
             var percent = totalVolume > 0 ? (item.Volume / totalVolume) * 100 : 0;
             <div class="product-card">
                 <div class="product-header">
-                    <div class="product-icon"></div>
                     <div class="product-title">@item.WoodType</div>
                 </div>
                 <div class="product-content">
@@ -128,35 +50,23 @@ else
                     </div>
                     <div class="product-progress">
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: @percent.ToString("F0")%; background: linear-gradient(90deg, #2d6a4f, #52b788);"></div>
+                            <div class="progress-fill" style="width: @percent.ToString("F0")%"></div>
                         </div>
                         <div class="progress-percent">@percent.ToString("F0")%</div>
                     </div>
                     @if (!string.IsNullOrEmpty(item.Location))
                     {
                         <div class="product-location">
-                            <span class="location-icon">📍</span>
-                            <span class="location-text">@item.Location</span>
+                            <span>📍</span>
+                            <span>@item.Location</span>
                         </div>
                     }
                     <div class="product-updated">
-                        <span class="updated-label">Обновлено:</span>
-                        <span class="updated-value">@item.UpdatedAt.ToString("dd.MM.yyyy HH:mm")</span>
+                        <span>Обновлено: @item.UpdatedAt.ToString("dd.MM.yyyy HH:mm")</span>
                     </div>
                 </div>
             </div>
         }
-    </div>
-
-    <div class="summary-footer">
-        <div class="summary-item">
-            <span class="summary-label">Всего на складе:</span>
-            <span class="summary-value">@totalVolume.ToString("F2") м³</span>
-        </div>
-        <div class="summary-item">
-            <span class="summary-label">Наиболее популярный тип:</span>
-            <span class="summary-value">@Model.OrderByDescending(s => s.Volume).First().WoodType</span>
-        </div>
     </div>
 }
 
@@ -170,64 +80,22 @@ else
         gap: 12px;
     }
 
-        .page-header h2 {
-            margin: 0;
-            font-size: 24px;
-            color: #1e2a3a;
-        }
+    .page-header h2 { margin: 0; font-size: 24px; color: #1e2a3a; }
 
-    .header-stats {
-        display: flex;
-        gap: 16px;
-        font-size: 13px;
-    }
+    .header-stats { display: flex; gap: 16px; font-size: 13px; }
 
-    .total-types {
-        background: #e0f2fe;
-        color: #0369a1;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-weight: 500;
-    }
+    .total-types { background: #e0f2fe; color: #0369a1; padding: 6px 14px; border-radius: 20px; font-weight: 500; }
+    .total-volume { background: #e8f5e9; color: #2d6a4f; padding: 6px 14px; border-radius: 20px; font-weight: 500; }
 
-    .total-volume {
-        background: #e8f5e9;
-        color: #2d6a4f;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-weight: 500;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        background: white;
-        border-radius: 24px;
-        border: 1px solid #e2e8f0;
-    }
-
-    .empty-icon {
-        font-size: 64px;
-        margin-bottom: 16px;
-        opacity: 0.5;
-    }
-
-    .empty-state p {
-        font-size: 16px;
-        color: #64748b;
-        margin-bottom: 8px;
-    }
-
-    .empty-state small {
-        font-size: 13px;
-        color: #94a3b8;
-    }
+    .empty-state { text-align: center; padding: 60px 20px; background: white; border-radius: 24px; border: 1px solid #e2e8f0; }
+    .empty-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state p { font-size: 16px; color: #64748b; margin-bottom: 8px; }
+    .empty-state small { font-size: 13px; color: #94a3b8; }
 
     .products-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 20px;
-        margin-bottom: 24px;
     }
 
     .product-card {
@@ -239,269 +107,43 @@ else
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
 
-        .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px -12px rgba(0,0,0,0.15);
-            border-color: #cbd5e1;
-        }
+    .product-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -12px rgba(0,0,0,0.15);
+    }
 
     .product-header {
         background: linear-gradient(135deg, #1e2a3a 0%, #2a3a4a 100%);
         padding: 16px 20px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
     }
 
-    .product-icon {
-        font-size: 28px;
-    }
+    .product-title { font-size: 18px; font-weight: 600; color: white; }
 
-    .product-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: white;
-    }
+    .product-content { padding: 20px; }
 
-    .product-content {
-        padding: 20px;
-    }
+    .product-size { background: #f8fafc; border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 16px; }
+    .size-label { display: block; font-size: 11px; color: #64748b; margin-bottom: 4px; }
+    .size-value { font-size: 14px; font-weight: 600; color: #1e2a3a; }
 
-    .product-size {
-        background: #f8fafc;
-        border-radius: 12px;
-        padding: 12px;
-        text-align: center;
-        margin-bottom: 16px;
-    }
+    .product-volume { text-align: center; margin-bottom: 16px; }
+    .volume-value { font-size: 32px; font-weight: 700; color: #1e2a3a; }
+    .volume-unit { font-size: 14px; color: #64748b; margin-left: 4px; }
 
-    .size-label {
-        display: block;
-        font-size: 11px;
-        color: #64748b;
-        margin-bottom: 4px;
-    }
+    .product-progress { display: flex; align-items: center; gap: 12px; }
+    .progress-bar { flex: 1; background: #e2e8f0; border-radius: 20px; height: 8px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 20px; background: linear-gradient(90deg, #2d6a4f, #52b788); transition: width 0.5s ease; }
+    .progress-percent { font-size: 12px; font-weight: 600; color: #2d6a4f; min-width: 45px; text-align: right; }
 
-    .size-value {
-        font-size: 14px;
-        font-weight: 600;
-        color: #1e2a3a;
-    }
+    .product-location { display: flex; align-items: center; gap: 6px; margin-top: 12px; background: #f0fdf4; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #2d6a4f; }
 
-    .product-volume {
-        text-align: center;
-        margin-bottom: 16px;
-    }
+    .product-updated { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8; }
 
-    .volume-value {
-        font-size: 32px;
-        font-weight: 700;
-        color: #1e2a3a;
-    }
-
-    .volume-unit {
-        font-size: 14px;
-        color: #64748b;
-        margin-left: 4px;
-    }
-
-    .product-progress {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .progress-bar {
-        flex: 1;
-        background: #e2e8f0;
-        border-radius: 20px;
-        height: 8px;
-        overflow: hidden;
-    }
-
-    .progress-fill {
-        height: 100%;
-        border-radius: 20px;
-        transition: width 0.5s ease;
-    }
-
-    .progress-percent {
-        font-size: 12px;
-        font-weight: 600;
-        color: #2d6a4f;
-        min-width: 45px;
-        text-align: right;
-    }
-
-    .product-location {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 12px;
-        background: #f0fdf4;
-        border-radius: 8px;
-        padding: 8px 12px;
-    }
-
-    .location-icon {
-        font-size: 14px;
-    }
-
-    .location-text {
-        font-size: 13px;
-        color: #2d6a4f;
-        font-weight: 500;
-    }
-
-    .product-updated {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px solid #f1f5f9;
-    }
-
-    .updated-label {
-        font-size: 11px;
-        color: #94a3b8;
-    }
-
-    .updated-value {
-        font-size: 11px;
-        color: #64748b;
-        font-weight: 500;
-    }
-
-    .summary-footer {
-        background: #f8fafc;
-        border-radius: 16px;
-        padding: 16px 24px;
-        display: flex;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 16px;
-        border: 1px solid #e2e8f0;
-    }
-
-    .summary-item {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-    }
-
-    .summary-label {
-        font-size: 13px;
-        color: #64748b;
-    }
-
-    .summary-value {
-        font-size: 16px;
-        font-weight: 600;
-        color: #1e2a3a;
-    }
-
-    .alert {
-        padding: 12px 16px;
-        border-radius: 12px;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .alert-success {
-        background: #d1e7dd;
-        color: #0a3622;
-    }
-
-    .alert-danger {
-        background: #f8d7da;
-        color: #721c24;
-    }
-
-    .alert-info {
-        background: #cfe2ff;
-        color: #084298;
-    }
-
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-        margin-bottom: 28px;
-    }
-
-    .stat-card {
-        background: linear-gradient(135deg, #1e2a3a 0%, #2a3a4a 100%);
-        border-radius: 20px;
-        padding: 20px;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-
-    .stat-icon { font-size: 42px; }
-    .stat-value { font-size: 28px; font-weight: 700; color: white; line-height: 1.2; }
-    .stat-label { font-size: 12px; color: #8a9bb0; margin-top: 4px; }
-
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: 1fr 0.8fr;
-        gap: 24px;
-        margin-bottom: 28px;
-    }
-
-    .card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; }
-    .card-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
-    .card-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
-    .card-body { padding: 20px; }
-
-    .data-table { width: 100%; border-collapse: collapse; }
-    .data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-    .data-table th { background: #f8fafc; font-weight: 600; }
-    .data-table tfoot { background: #f8fafc; font-weight: 600; border-top: 2px solid #e2e8f0; }
-
-    .tbl-progress { background: #e2e8f0; border-radius: 20px; overflow: hidden; height: 24px; position: relative; width: 100%; max-width: 120px; }
-    .tbl-fill { height: 100%; background: linear-gradient(90deg, #2d6a4f, #52b788); border-radius: 20px; }
-    .tbl-pct { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 10px; font-weight: 700; color: #1e2a3a; text-shadow: 0 0 2px white; }
+    .alert { padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; }
+    .alert-success { background: #d1e7dd; color: #0a3622; }
+    .alert-danger { background: #f8d7da; color: #721c24; }
 
     @@media (max-width: 768px) {
         .page-header { flex-direction: column; align-items: flex-start; }
-        .stats-grid { grid-template-columns: 1fr; }
-        .dashboard-grid { grid-template-columns: 1fr; }
         .products-grid { grid-template-columns: 1fr; }
-        .summary-footer { flex-direction: column; }
     }
 </style>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            ((IEnumerable<dynamic>)ViewBag.Summary)
-                .Select(s => new { woodType = (string)s.WoodType, remaining = (decimal)s.Volume })
-        ));
-        const colors = ['#2d6a4f','#40916c','#52b788','#74c69d','#1e2a3a','#2a3a4a'];
-        if (data.length > 0) {
-            new Chart(document.getElementById('stockChart').getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: data.map(s => s.woodType),
-                    datasets: [{ data: data.map(s => s.remaining), backgroundColor: colors, borderWidth: 0, hoverOffset: 8 }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: true, cutout: '60%',
-                    plugins: {
-                        legend: { position: 'bottom', labels: { font: { size: 10 } } },
-                        tooltip: { callbacks: { label: function(ctx) {
-                            const total = data.reduce((a, s) => a + s.remaining, 0);
-                            return `${ctx.label}: ${Number(ctx.raw).toFixed(2)} м³ (${((ctx.raw/total)*100).toFixed(1)}%)`;
-                        }}}
-                    }
-                }
-            });
-        }
-    });
-</script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">

@@ -26,15 +26,6 @@ namespace Diplom.Controllers
                 .ThenBy(s => s.SheetWidth)
                 .ToListAsync();
 
-            // Группировка по типу древесины для таблицы
-            var summary = stocks
-                .GroupBy(s => s.WoodType)
-                .Select(g => new { WoodType = g.Key, Volume = g.Sum(s => s.Volume) })
-                .OrderByDescending(s => s.Volume)
-                .ToList();
-
-            ViewBag.TotalVolume = stocks.Sum(s => s.Volume);
-            ViewBag.Summary = summary;
             return View(stocks);
         }
 
