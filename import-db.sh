@@ -33,6 +33,7 @@ CREATE DATABASE [$DB_NAME];
 
 echo "==> Загрузка sqlpackage (если не установлен)..."
 if [ ! -f "$SQLPACKAGE_DIR/sqlpackage" ]; then
+  command -v unzip > /dev/null 2>&1 || apt-get install -y unzip
   curl -L https://aka.ms/sqlpackage-linux -o /tmp/sqlpackage.zip
   unzip -o /tmp/sqlpackage.zip -d "$SQLPACKAGE_DIR"
   rm /tmp/sqlpackage.zip
