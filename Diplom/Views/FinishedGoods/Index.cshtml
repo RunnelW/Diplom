@@ -60,6 +60,17 @@ else
                         </div>
                         <div class="progress-percent">@percent.ToString("F0")%</div>
                     </div>
+                    @if (!string.IsNullOrEmpty(item.Location))
+                    {
+                        <div class="product-location">
+                            <span class="location-icon">📍</span>
+                            <span class="location-text">@item.Location</span>
+                        </div>
+                    }
+                    <div class="product-updated">
+                        <span class="updated-label">Обновлено:</span>
+                        <span class="updated-value">@item.UpdatedAt.ToString("dd.MM.yyyy HH:mm")</span>
+                    </div>
                 </div>
             </div>
         }
@@ -248,6 +259,46 @@ else
         color: #2d6a4f;
         min-width: 45px;
         text-align: right;
+    }
+
+    .product-location {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 12px;
+        background: #f0fdf4;
+        border-radius: 8px;
+        padding: 8px 12px;
+    }
+
+    .location-icon {
+        font-size: 14px;
+    }
+
+    .location-text {
+        font-size: 13px;
+        color: #2d6a4f;
+        font-weight: 500;
+    }
+
+    .product-updated {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .updated-label {
+        font-size: 11px;
+        color: #94a3b8;
+    }
+
+    .updated-value {
+        font-size: 11px;
+        color: #64748b;
+        font-weight: 500;
     }
 
     .summary-footer {
