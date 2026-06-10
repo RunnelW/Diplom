@@ -1,15 +1,101 @@
 ﻿@model IEnumerable<Diplom.Models.FinishedGoodsStock>
+@using Diplom.Controllers
 @{
     ViewData["Title"] = "Склад готовой продукции";
     var totalVolume = Model.Sum(s => s.Volume);
     var hasItems = Model.Any();
+    var summary = (List<ReportsController.FinishedGoodsStockReportData>)ViewBag.Summary;
+    var totalProduced  = (decimal)ViewBag.TotalProduced;
+    var totalShipped   = (decimal)ViewBag.TotalShipped;
+    var totalRemaining = (decimal)ViewBag.TotalRemaining;
 }
 
 <div class="page-header">
     <h2>📦 Склад готовой продукции (шпон)</h2>
     <div class="header-stats">
-        <span class="total-types">📋 Типов: @Model.Count()</span>
-        <span class="total-volume">📊 Итого: @totalVolume.ToString("F2") м³</span>
+        <span class="total-types">📋 Типов: @summary.Count</span>
+        <span class="total-volume">📊 Остаток: @totalRemaining.ToString("F2") м³</span>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-info">
+            <div class="stat-value">@totalRemaining.ToString("F2")</div>
+            <div class="stat-label">Остаток на складе (м³)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🏭</div>
+        <div class="stat-info">
+            <div class="stat-value">@totalProduced.ToString("F2")</div>
+            <div class="stat-label">Произведено всего (м³)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🚛</div>
+        <div class="stat-info">
+            <div class="stat-value">@totalShipped.ToString("F2")</div>
+            <div class="stat-label">Отгружено всего (м³)</div>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <div class="card-header"><h3>📋 Остатки по типам древесины</h3></div>
+        <div class="card-body">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Тип древесины</th>
+                        <th>Произведено (м³)</th>
+                        <th>Отгружено (м³)</th>
+                        <th>Остаток (м³)</th>
+                        <th>Доля</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in summary.OrderByDescending(s => s.RemainingVolume))
+                    {
+                        var pct = totalRemaining > 0 ? (item.RemainingVolume / totalRemaining) * 100 : 0;
+                        <tr>
+                            <td><strong>@item.WoodType</strong></td>
+                            <td>@item.ProducedVolume.ToString("F2")</td>
+                            <td>@item.ShippedVolume.ToString("F2")</td>
+                            <td>
+                                @if (item.RemainingVolume > 0)
+                                { <span style="color:#2d6a4f;font-weight:600;">@item.RemainingVolume.ToString("F2")</span> }
+                                else
+                                { <span style="color:#dc3545;">@item.RemainingVolume.ToString("F2")</span> }
+                            </td>
+                            <td>
+                                <div class="tbl-progress">
+                                    <div class="tbl-fill" style="width:@pct.ToString("F0")%"></div>
+                                    <span class="tbl-pct">@pct.ToString("F1")%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Итого:</th>
+                        <th>@totalProduced.ToString("F2")</th>
+                        <th>@totalShipped.ToString("F2")</th>
+                        <th>@totalRemaining.ToString("F2") м³</th>
+                        <th>100%</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h3>🥧 Распределение остатков</h3></div>
+        <div class="card-body">
+            <canvas id="stockChart" style="height:280px;max-height:280px;"></canvas>
+        </div>
     </div>
 </div>
 
@@ -353,20 +439,83 @@ else
         color: #084298;
     }
 
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-bottom: 28px;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #1e2a3a 0%, #2a3a4a 100%);
+        border-radius: 20px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .stat-icon { font-size: 42px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: white; line-height: 1.2; }
+    .stat-label { font-size: 12px; color: #8a9bb0; margin-top: 4px; }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 0.8fr;
+        gap: 24px;
+        margin-bottom: 28px;
+    }
+
+    .card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+    .card-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+    .card-body { padding: 20px; }
+
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    .data-table th { background: #f8fafc; font-weight: 600; }
+    .data-table tfoot { background: #f8fafc; font-weight: 600; border-top: 2px solid #e2e8f0; }
+
+    .tbl-progress { background: #e2e8f0; border-radius: 20px; overflow: hidden; height: 24px; position: relative; width: 100%; max-width: 120px; }
+    .tbl-fill { height: 100%; background: linear-gradient(90deg, #2d6a4f, #52b788); border-radius: 20px; }
+    .tbl-pct { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 10px; font-weight: 700; color: #1e2a3a; text-shadow: 0 0 2px white; }
+
     @@media (max-width: 768px) {
-        .page-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .products-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .summary-footer {
-            flex-direction: column;
-        }
+        .page-header { flex-direction: column; align-items: flex-start; }
+        .stats-grid { grid-template-columns: 1fr; }
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .products-grid { grid-template-columns: 1fr; }
+        .summary-footer { flex-direction: column; }
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            ((List<Diplom.Controllers.ReportsController.FinishedGoodsStockReportData>)ViewBag.Summary)
+                .Select(s => new { woodType = s.WoodType, remaining = s.RemainingVolume })
+        ));
+        const colors = ['#2d6a4f','#40916c','#52b788','#74c69d','#1e2a3a','#2a3a4a'];
+        if (data.length > 0) {
+            new Chart(document.getElementById('stockChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: data.map(s => s.woodType),
+                    datasets: [{ data: data.map(s => s.remaining), backgroundColor: colors, borderWidth: 0, hoverOffset: 8 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true, cutout: '60%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 10 } } },
+                        tooltip: { callbacks: { label: function(ctx) {
+                            const total = data.reduce((a, s) => a + s.remaining, 0);
+                            return `${ctx.label}: ${Number(ctx.raw).toFixed(2)} м³ (${((ctx.raw/total)*100).toFixed(1)}%)`;
+                        }}}
+                    }
+                }
+            });
+        }
+    });
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
