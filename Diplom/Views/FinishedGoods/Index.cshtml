@@ -1,20 +1,16 @@
 ﻿@model IEnumerable<Diplom.Models.FinishedGoodsStock>
-@using Diplom.Controllers
 @{
     ViewData["Title"] = "Склад готовой продукции";
-    var totalVolume = Model.Sum(s => s.Volume);
+    var totalVolume = (decimal)ViewBag.TotalVolume;
     var hasItems = Model.Any();
-    var summary = (List<FinishedGoodsStockReportData>)ViewBag.Summary;
-    var totalProduced  = (decimal)ViewBag.TotalProduced;
-    var totalShipped   = (decimal)ViewBag.TotalShipped;
-    var totalRemaining = (decimal)ViewBag.TotalRemaining;
+    var summary = (IEnumerable<dynamic>)ViewBag.Summary;
 }
 
 <div class="page-header">
     <h2>📦 Склад готовой продукции (шпон)</h2>
     <div class="header-stats">
-        <span class="total-types">📋 Типов: @summary.Count</span>
-        <span class="total-volume">📊 Остаток: @totalRemaining.ToString("F2") м³</span>
+        <span class="total-types">📋 Типов: @summary.Count()</span>
+        <span class="total-volume">📊 Итого: @totalVolume.ToString("F2") м³</span>
     </div>
 </div>
 
@@ -22,22 +18,22 @@
     <div class="stat-card">
         <div class="stat-icon">📦</div>
         <div class="stat-info">
-            <div class="stat-value">@totalRemaining.ToString("F2")</div>
+            <div class="stat-value">@totalVolume.ToString("F2")</div>
             <div class="stat-label">Остаток на складе (м³)</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">🏭</div>
+        <div class="stat-icon">📋</div>
         <div class="stat-info">
-            <div class="stat-value">@totalProduced.ToString("F2")</div>
-            <div class="stat-label">Произведено всего (м³)</div>
+            <div class="stat-value">@summary.Count()</div>
+            <div class="stat-label">Типов древесины</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">🚛</div>
+        <div class="stat-icon">📐</div>
         <div class="stat-info">
-            <div class="stat-value">@totalShipped.ToString("F2")</div>
-            <div class="stat-label">Отгружено всего (м³)</div>
+            <div class="stat-value">@Model.Count()</div>
+            <div class="stat-label">Позиций на складе</div>
         </div>
     </div>
 </div>
@@ -50,26 +46,18 @@
                 <thead>
                     <tr>
                         <th>Тип древесины</th>
-                        <th>Произведено (м³)</th>
-                        <th>Отгружено (м³)</th>
                         <th>Остаток (м³)</th>
                         <th>Доля</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in summary.OrderByDescending(s => s.RemainingVolume))
+                    @foreach (var item in summary)
                     {
-                        var pct = totalRemaining > 0 ? (item.RemainingVolume / totalRemaining) * 100 : 0;
+                        decimal vol = (decimal)item.Volume;
+                        var pct = totalVolume > 0 ? (vol / totalVolume) * 100 : 0;
                         <tr>
                             <td><strong>@item.WoodType</strong></td>
-                            <td>@item.ProducedVolume.ToString("F2")</td>
-                            <td>@item.ShippedVolume.ToString("F2")</td>
-                            <td>
-                                @if (item.RemainingVolume > 0)
-                                { <span style="color:#2d6a4f;font-weight:600;">@item.RemainingVolume.ToString("F2")</span> }
-                                else
-                                { <span style="color:#dc3545;">@item.RemainingVolume.ToString("F2")</span> }
-                            </td>
+                            <td><span style="color:#2d6a4f;font-weight:600;">@vol.ToString("F2")</span></td>
                             <td>
                                 <div class="tbl-progress">
                                     <div class="tbl-fill" style="width:@pct.ToString("F0")%"></div>
@@ -82,9 +70,7 @@
                 <tfoot>
                     <tr>
                         <th>Итого:</th>
-                        <th>@totalProduced.ToString("F2")</th>
-                        <th>@totalShipped.ToString("F2")</th>
-                        <th>@totalRemaining.ToString("F2") м³</th>
+                        <th>@totalVolume.ToString("F2") м³</th>
                         <th>100%</th>
                     </tr>
                 </tfoot>
@@ -493,8 +479,8 @@ else
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            ((List<Diplom.Controllers.FinishedGoodsStockReportData>)ViewBag.Summary)
-                .Select(s => new { woodType = s.WoodType, remaining = s.RemainingVolume })
+            ((IEnumerable<dynamic>)ViewBag.Summary)
+                .Select(s => new { woodType = (string)s.WoodType, remaining = (decimal)s.Volume })
         ));
         const colors = ['#2d6a4f','#40916c','#52b788','#74c69d','#1e2a3a','#2a3a4a'];
         if (data.length > 0) {
