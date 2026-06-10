@@ -4,7 +4,7 @@
     ViewData["Title"] = "Склад готовой продукции";
     var totalVolume = Model.Sum(s => s.Volume);
     var hasItems = Model.Any();
-    var summary = (List<ReportsController.FinishedGoodsStockReportData>)ViewBag.Summary;
+    var summary = (List<FinishedGoodsStockReportData>)ViewBag.Summary;
     var totalProduced  = (decimal)ViewBag.TotalProduced;
     var totalShipped   = (decimal)ViewBag.TotalShipped;
     var totalRemaining = (decimal)ViewBag.TotalRemaining;
@@ -493,7 +493,7 @@ else
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            ((List<Diplom.Controllers.ReportsController.FinishedGoodsStockReportData>)ViewBag.Summary)
+            ((List<Diplom.Controllers.FinishedGoodsStockReportData>)ViewBag.Summary)
                 .Select(s => new { woodType = s.WoodType, remaining = s.RemainingVolume })
         ));
         const colors = ['#2d6a4f','#40916c','#52b788','#74c69d','#1e2a3a','#2a3a4a'];

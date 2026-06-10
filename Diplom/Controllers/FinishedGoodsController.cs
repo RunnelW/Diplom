@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Diplom.Data;
 using Diplom.Models;
-using static Diplom.Controllers.ReportsController;
 
 namespace Diplom.Controllers
 {
