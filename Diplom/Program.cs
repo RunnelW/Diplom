@@ -3,6 +3,9 @@ using Diplom.Models;
 using Diplom.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using PdfSharp.Fonts;
+
+GlobalFontSettings.FontResolver = new LinuxFontResolver();
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -203,39 +203,45 @@ namespace Diplom.Controllers
         {
             var targetDate = date ?? DateTime.Now;
 
-            // Получаем производство (приход готовой продукции) до указанной даты
+            // Остатки из таблицы склада (единый источник правды)
+            var warehouseStocks = await _context.FinishedGoodsStocks
+                .Where(s => s.Volume > 0)
+                .ToListAsync();
+
+            // Производство до указанной даты — для колонки "Произведено"
             var production = await _context.ProductionBatches
                 .Include(p => p.WoodStack)
                 .Where(p => p.ProductionDate <= targetDate)
                 .ToListAsync();
 
-            // Получаем отгрузки (расход готовой продукции) до указанной даты
+            // Отгрузки до указанной даты — для колонки "Отгружено"
             var shipments = await _context.ShipmentItems
                 .Include(s => s.ShipmentOrder)
                 .Include(s => s.FinishedGoodsStock)
                 .Where(s => s.ShipmentOrder.ShipmentDate <= targetDate)
                 .ToListAsync();
 
-            // Считаем остатки по типам древесины
-            var stocks = production
-                .GroupBy(p => p.WoodStack.WoodType)
-                .Select(g => new FinishedGoodsStockReportData
-                {
-                    WoodType = g.Key,
-                    ProducedVolume = g.Sum(p => p.VeneerVolume),
-                    ShippedVolume = shipments
-                        .Where(s => s.FinishedGoodsStock?.WoodType == g.Key)
-                        .Sum(s => s.Volume),
-                    BatchCount = g.Count()
-                })
-                .Where(s => s.ProducedVolume > 0 || s.ShippedVolume > 0)
-                .OrderBy(s => s.WoodType)
-                .ToList();
+            var allWoodTypes = warehouseStocks.Select(s => s.WoodType)
+                .Union(production.Select(p => p.WoodStack.WoodType))
+                .Distinct()
+                .OrderBy(t => t);
 
-            foreach (var stock in stocks)
+            var stocks = allWoodTypes.Select(woodType => new FinishedGoodsStockReportData
             {
-                stock.RemainingVolume = stock.ProducedVolume - stock.ShippedVolume;
-            }
+                WoodType = woodType,
+                RemainingVolume = warehouseStocks
+                    .Where(s => s.WoodType == woodType)
+                    .Sum(s => s.Volume),
+                ProducedVolume = production
+                    .Where(p => p.WoodStack.WoodType == woodType)
+                    .Sum(p => p.VeneerVolume),
+                ShippedVolume = shipments
+                    .Where(s => s.FinishedGoodsStock?.WoodType == woodType)
+                    .Sum(s => s.Volume),
+                BatchCount = production.Count(p => p.WoodStack.WoodType == woodType)
+            })
+            .Where(s => s.RemainingVolume > 0 || s.ProducedVolume > 0)
+            .ToList();
 
             ViewBag.TargetDate = targetDate.ToString("dd.MM.yyyy");
             ViewBag.TotalRemaining = stocks.Sum(s => s.RemainingVolume);

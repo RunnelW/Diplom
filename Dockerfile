@@ -8,6 +8,7 @@ RUN dotnet publish "Diplom.csproj" -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+RUN apt-get update && apt-get install -y fonts-liberation && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish .
 EXPOSE 7777
 ENTRYPOINT ["dotnet", "Diplom.dll"]

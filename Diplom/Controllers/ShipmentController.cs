@@ -357,7 +357,6 @@ namespace Diplom.Controllers
         }
 
         [HttpGet]
-        [HttpGet]
         public async Task<IActionResult> GenerateAct(int id)
         {
             var order = await _context.ShipmentOrders
